@@ -14,6 +14,7 @@ template = {
 env.hosts = ['128.112.168.28']
 env.user = 'root'
 env.password = 'PrincetonP4OVS3'
+env.warn_only = True
 
 
 """ Basic PVE Commands"""
