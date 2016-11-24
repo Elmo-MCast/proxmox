@@ -19,9 +19,13 @@ env.password = 'PrincetonP4OVS3'
 """ Basic PVE Commands"""
 
 
-def ssh_run(vm_id, command):
-    run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\""
-        % (template['key_file'], vm_id, command))
+def ssh_run(vm_id, command, log_file=None):
+    if log_file:
+        run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\" > %s"
+            % (template['key_file'], vm_id, command, log_file))
+    else:
+        run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\""
+            % (template['key_file'], vm_id, command))
 
 
 def clone_vm(vm_id, vm_name):

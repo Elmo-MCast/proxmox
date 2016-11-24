@@ -1,6 +1,8 @@
 
+from pebble import process
+from fabric.api import *
 import pve
-
+import results
 
 vm_ids = {
     'db_server': 204,
@@ -9,8 +11,8 @@ vm_ids = {
     'faban_client': 207
 }
 
-pm_max_childs = 150
-load_scale = 100
+pm_max_childs = 8
+load_scale = 2
 
 
 def configure_db_server(vm_id, web_server_id):
@@ -47,11 +49,15 @@ def configure_faban_client(vm_id):
     pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:faban_client")
 
 
+@process.spawn(daemon=True)
 def run_faban_client(vm_id, web_server_id, load_scale):
+    local('rm -f results/faban_client_%s.log' % (vm_id,))
     pve.ssh_run(vm_id,
                 "sudo docker run --net host --name faban_client_%s "
                 "cloudsuite/web-serving:faban_client 10.10.10.%s %s"
-                % (vm_id, web_server_id, load_scale))
+                % (vm_id, web_server_id, load_scale),
+                "/tmp/faban_client_%s.log" % (vm_id,))
+    get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
 
 
 def clear_faban_client(vm_id):
@@ -84,7 +90,8 @@ def configure():
 
 
 def run():
-    run_faban_client(vm_ids['faban_client'], vm_ids['web_server'], load_scale)
+    run_faban_client(vm_ids['faban_client'], vm_ids['web_server'], load_scale).join()
+    print results.clean_results('results/faban_client_%s.log' % (vm_ids['faban_client'],))
 
 
 def clear():
