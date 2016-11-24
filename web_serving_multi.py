@@ -125,7 +125,7 @@ def add_hosts(vm_ids):
 
 
 def generate():
-    pve.generate_vms('web-serving-haproxy', *ids.values())
+    pve.generate_vms('web-serving', *ids.values())
     add_hosts(ids)
 
 
