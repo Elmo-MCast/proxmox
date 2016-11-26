@@ -97,12 +97,12 @@ def generate_vm(vm_id, vm_name):
     configure_vm_network(template['vm_id'], vm_id)
     sync_vm(template["vm_id"])
     reboot_vm(vm_id)
+    is_vm_ready(vm_id)
 
 
 def generate_vms(prefix, *vm_ids):
     for vm_id in vm_ids:
         generate_vm(vm_id, '%s-%s' % (prefix, vm_id))
-    is_vm_ready(vm_id)
 
 
 def destroy_vm(vm_id):
