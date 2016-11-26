@@ -1,10 +1,7 @@
-
 import sys
 from fabric.api import *
 
-
 """ Configurations """
-
 
 template = {
     'vm_id': 200,
@@ -15,7 +12,6 @@ env.hosts = ['128.112.168.28']
 env.user = 'root'
 env.password = 'PrincetonP4OVS3'
 env.warn_only = True
-
 
 """ Basic PVE Commands"""
 
@@ -30,7 +26,8 @@ def ssh_run(vm_id, command, log_file=None):
 
 
 def clone_vm(vm_id, vm_name):
-    run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s" % (template['vm_id'], vm_id, vm_name))
+    run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s" % (
+    template['vm_id'], vm_id, vm_name))
 
 
 def start_vm(vm_id):
@@ -53,7 +50,7 @@ def stop_vms(*vm_ids):
 
 def delete_vm(vm_id):
     if vm_id == str(template['vm_id']):
-        sys.stderr.write("Error: cannot delete a VM template (vm_id:%s).\n" %(vm_id,))
+        sys.stderr.write("Error: cannot delete a VM template (vm_id:%s).\n" % (vm_id,))
         sys.exit(1)
     run("pvesh delete /nodes/mshahbaz-poweredge-3-pve/qemu/%s" % (vm_id,))
 
@@ -104,7 +101,8 @@ def generate_vm(vm_id, vm_name):
 
 def generate_vms(prefix, *vm_ids):
     for vm_id in vm_ids:
-        generate_vm(vm_id, '%s-%s' %(prefix, vm_id))
+        generate_vm(vm_id, '%s-%s' % (prefix, vm_id))
+    is_vm_ready(vm_id)
 
 
 def destroy_vm(vm_id):

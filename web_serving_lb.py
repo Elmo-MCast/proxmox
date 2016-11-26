@@ -10,7 +10,7 @@ settings = {
         'mysql_server': [
             {
                 'vm_id': 206,
-                'web_server': 0
+                'lb_server': 0
             }
         ],
         'memcache_server': [
@@ -30,7 +30,15 @@ settings = {
             {
                 'vm_id': 208,
                 'load_scale': 7,
-                'web_server': 0
+                'lb_server': 0
+            }
+        ],
+        'lb_server': [
+            {
+                'vm_id': 209,
+                'web_servers': [
+                    0
+                ]
             }
         ]
     },
@@ -77,12 +85,12 @@ def configure_common():
 def configure_mysql_server():
     for mysql_server in settings['vms']['mysql_server']:
         vm_id = mysql_server['vm_id']
-        web_server_vm_id = settings['vms']['web_server'][mysql_server['web_server']]['vm_id']
+        lb_server_vm_id = settings['vms']['lb_server'][mysql_server['lb_server']]['vm_id']
         pve.is_vm_ready(vm_id)
         pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:db_server")
         pve.ssh_run(vm_id,
                     "sudo docker run -dt --net host --name mysql_server_%s cloudsuite/web-serving:db_server 10.10.10.%s"
-                    % (vm_id, web_server_vm_id,))
+                    % (vm_id, lb_server_vm_id,))
 
 
 def configure_memcache_server():
@@ -116,12 +124,32 @@ def configure_faban_client():
         pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:faban_client")
 
 
+def configure_lb_server():
+    for lb_server in settings['vms']['lb_server']:
+        vm_id = lb_server['vm_id']
+        pve.is_vm_ready(vm_id)
+        pve.ssh_run(vm_id,
+                    "sudo apt-get update;"
+                    "sudo apt-get install haproxy;"
+                    "sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/haproxy;"
+                    "echo 'frontend web-serving\n    bind 10.10.10.%s:8080\n    default_backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg;"
+                    "echo 'backend web-serving-backend\n    balance source' | sudo tee -a /etc/haproxy/haproxy.cfg;"
+                    % (vm_id,))
+        for web_server_id in lb_server['web_servers']:
+            web_server_vm_id = settings['vms']['web_server'][web_server_id]['vm_id']
+            pve.ssh_run(vm_id,
+                        "echo '    server web_server_%s 10.10.10.%s:8080' | sudo tee -a /etc/haproxy/haproxy.cfg;"
+                        % (web_server_vm_id, web_server_vm_id))
+        pve.ssh_run(vm_id, "sudo service haproxy restart")
+
+
 def configure():
     configure_common()
     configure_mysql_server()
     configure_memcache_server()
     configure_web_server()
     configure_faban_client()
+    configure_lb_server()
 
 
 @process.spawn(daemon=True)
@@ -139,9 +167,9 @@ def run():
     for faban_client in settings['vms']['faban_client']:
         vm_id = faban_client['vm_id']
         load_scale = faban_client['load_scale']
-        web_server_vm_id = settings['vms']['web_server'][faban_client['web_server']]['vm_id']
+        lb_server_vm_id = settings['vms']['lb_server'][faban_client['lb_server']]['vm_id']
         runs.append({
-            'run': run_faban_client(vm_id, web_server_vm_id, load_scale),
+            'run': run_faban_client(vm_id, lb_server_vm_id, load_scale),
             'vm_id': vm_id})
     for i in range(len(runs)):
         runs[i]['run'].join()
