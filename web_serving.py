@@ -8,7 +8,7 @@ import results
 settings = {
     'vms': {
         'mysql_server': [
-            {'vm_id': 206, 'web_server': 0}
+            {'vm_id': 207, 'web_server': 0}
         ],
         'memcache_server': [
             {'vm_id': 207}
@@ -21,7 +21,7 @@ settings = {
         ]
     },
     'vm_prefix': 'web-serving',
-    'base_vm_id': 198
+    'base_vm_id': 197
 }
 
 # Helpers
@@ -53,6 +53,17 @@ def generate():
 
 def destroy():
     pve.destroy_vms(*vm_id_list)
+
+
+
+# def configure_common():
+#     for vm_id in vm_id_list:
+#         pve.is_vm_ready(vm_id)
+#         pve.ssh_run(vm_id,
+#                     "sudo apt-get update;"
+#                     "curl -sSL https://get.docker.com/ | sh;"
+#                     "sudo apt-get install haproxy;"
+#                     "sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/haproxy")
 
 
 @process.spawn(daemon=True)
@@ -108,7 +119,7 @@ def run_faban_client(vm_id, web_server_vm_id, load_scale):
                 % (vm_id, web_server_vm_id, load_scale),
                 "/tmp/faban_client_%s.log" % (vm_id,))
     get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
-    pve.ssh_run(vm_id, "sudo rm -f /tmp/faban_client_%s.log" % (vm_id,))
+    run("rm -f /tmp/faban_client_%s.log" % (vm_id,))  # TODO: check why this command doesn't work.
 
 
 def run():

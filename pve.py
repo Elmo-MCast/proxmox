@@ -23,9 +23,13 @@ def ssh_run(vm_id, command, log_file=None):
             % (template['key_file'], vm_id, command))
 
 
-def clone_vm(base_vm_id, vm_id, vm_name):
-    run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s"
-        % (base_vm_id, vm_id, vm_name))
+def clone_vm(base_vm_id, vm_id, vm_name, full=False):
+    if full:
+        run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s -full"
+            % (base_vm_id, vm_id, vm_name))
+    else:
+        run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s"
+            % (base_vm_id, vm_id, vm_name))
 
 
 def start_vm(vm_id):
@@ -85,8 +89,8 @@ def configure_vm_network(old_vm_id, vm_id):
                old_vm_id, vm_id))
 
 
-def generate_vm(base_vm_id, vm_id, vm_name):
-    clone_vm(base_vm_id, vm_id, vm_name)
+def generate_vm(base_vm_id, vm_id, vm_name, full=False):
+    clone_vm(base_vm_id, vm_id, vm_name, full)
     start_vm(vm_id)
     is_vm_ready(base_vm_id)
     configure_vm_network(base_vm_id, vm_id)
