@@ -118,6 +118,7 @@ def run_faban_client(vm_id, web_server_vm_id, load_scale):
                 % (vm_id, web_server_vm_id, load_scale),
                 "/tmp/faban_client_%s.log" % (vm_id,))
     get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
+    pve.ssh_run(vm_id, "sudo rm -f /tmp/faban_client_%s.log" % (vm_id,))
 
 
 def run():
