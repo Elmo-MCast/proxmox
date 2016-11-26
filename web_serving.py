@@ -188,13 +188,3 @@ def clear():
     run_web.join()
     for i in range(len(runs)):
         runs[i].join()
-
-
-def clear_run():
-    runs = []
-    for faban_client in settings['vms']['faban_client']:
-        vm_id = faban_client['vm_id']
-        runs.append(clear_faban_client(vm_id))
-
-    for i in range(len(runs)):
-        runs[i].join()

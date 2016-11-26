@@ -9,35 +9,38 @@ settings = {
     'vms': {
         'mysql_server': [
             {'vm_id': 206, 'lb_server': 0},
-            {'vm_id': 207, 'lb_server': 0},
-            {'vm_id': 208, 'lb_server': 0},
-            {'vm_id': 209, 'lb_server': 0}
+            # {'vm_id': 207, 'lb_server': 0},
+            # {'vm_id': 208, 'lb_server': 0},
+            # {'vm_id': 209, 'lb_server': 0}
         ],
         'memcache_server': [
             {'vm_id': 206},
-            {'vm_id': 207},
-            {'vm_id': 208},
-            {'vm_id': 209}
+            # {'vm_id': 207},
+            # {'vm_id': 208},
+            # {'vm_id': 209}
         ],
         'web_server': [
-            {'vm_id': 206, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
-            {'vm_id': 207, 'pm_max_childs': 80, 'mysql_server': 1, 'memcache_server': 1},
-            {'vm_id': 208, 'pm_max_childs': 80, 'mysql_server': 2, 'memcache_server': 2},
-            {'vm_id': 209, 'pm_max_childs': 80, 'mysql_server': 3, 'memcache_server': 3}
+            {'vm_id': 207, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
+            {'vm_id': 208, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
+            {'vm_id': 209, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
+            {'vm_id': 210, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0}
         ],
         'faban_client': [
-            {'vm_id': 210, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 211, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 212, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 213, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 214, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 215, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 216, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 217, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 218, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0}
+            {'vm_id': 211, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 212, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 213, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 214, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 215, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 216, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 217, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 218, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
+            {'vm_id': 219, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0}
+
         ],
         'lb_server': [
-            {'vm_id': 205, 'web_servers': [0]}
+            {'vm_id': 205, 'web_servers': [0, 1, 2, 3], 'policy': 'roundrobin'}
+            # RoundRobin policy requires centralized authentication and state sharing ... this can be done using a single
+            # mysql and memcache server, for now.
         ]
     },
     'vm_prefix': 'web-serving',
@@ -138,11 +141,12 @@ def configure_faban_client():
 def configure_lb_server():
     for lb_server in settings['vms']['lb_server']:
         vm_id = lb_server['vm_id']
+        policy = lb_server['policy']
         pve.is_vm_ready(vm_id)
         pve.ssh_run(vm_id,
                     "echo 'frontend web-serving\n    bind 10.10.10.%s:8080\n    default_backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg;"
-                    "echo 'backend web-serving-backend\n    balance source' | sudo tee -a /etc/haproxy/haproxy.cfg"
-                    % (vm_id,))
+                    "echo 'backend web-serving-backend\n    balance %s' | sudo tee -a /etc/haproxy/haproxy.cfg"
+                    % (vm_id, policy))
         for web_server_id in lb_server['web_servers']:
             web_server_vm_id = settings['vms']['web_server'][web_server_id]['vm_id']
             pve.ssh_run(vm_id,
@@ -174,7 +178,7 @@ def run_faban_client(vm_id, web_server_vm_id, load_scale):
                 % (vm_id, web_server_vm_id, load_scale),
                 "/tmp/faban_client_%s.log" % (vm_id,))
     fab.get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
-    fab.run("rm -f /tmp/faban_client_%s.log" % (vm_id,))  # TODO: check why this command doesn't work.
+    fab.run("rm -f /tmp/faban_client_%s.log" % (vm_id,))
 
 
 def run():
@@ -188,10 +192,9 @@ def run():
             'vm_id': vm_id})
     for i in range(len(runs)):
         runs[i]['run'].join()
-        print results.clean_results('results/faban_client_%s.log' % (runs[i]['vm_id'],))
+        print 'faban_client_%s' % (runs[i]['vm_id'],) + str(results.clean_results('results/faban_client_%s.log' % (runs[i]['vm_id'],)))
 
 
-@process.spawn(daemon=True)
 def clear_mysql_server():
     for mysql_server in settings['vms']['mysql_server']:
         vm_id = mysql_server['vm_id']
@@ -201,7 +204,6 @@ def clear_mysql_server():
                     "sudo docker rm mysql_server_%s" % (vm_id, vm_id))
 
 
-@process.spawn(daemon=True)
 def clear_memcache_server():
     for memcache_server in settings['vms']['memcache_server']:
         vm_id = memcache_server['vm_id']
@@ -211,7 +213,6 @@ def clear_memcache_server():
                     "sudo docker rm memcache_server_%s" % (vm_id, vm_id))
 
 
-@process.spawn(daemon=True)
 def clear_web_server():
     for web_server in settings['vms']['web_server']:
         vm_id = web_server['vm_id']
@@ -221,18 +222,18 @@ def clear_web_server():
                     "sudo docker rm web_server_%s" % (vm_id, vm_id))
 
 
-@process.spawn(daemon=True)
 def clear_lb_server():
     for lb_server in settings['vms']['lb_server']:
         vm_id = lb_server['vm_id']
+        policy = lb_server['policy']
         pve.is_vm_ready(vm_id)
         pve.ssh_run(vm_id,
                     "sudo sed --in-place '/frontend web-serving/d' /etc/haproxy/haproxy.cfg;"
                     "sudo sed --in-place '/bind 10.10.10.%s:8080/d' /etc/haproxy/haproxy.cfg;"
                     "sudo sed --in-place '/default_backend web-serving-backend/d' /etc/haproxy/haproxy.cfg;"
                     "sudo sed --in-place '/backend web-serving-backend/d' /etc/haproxy/haproxy.cfg;"
-                    "sudo sed --in-place '/balance source/d' /etc/haproxy/haproxy.cfg"
-                    % (vm_id,))
+                    "sudo sed --in-place '/balance %s/d' /etc/haproxy/haproxy.cfg"
+                    % (vm_id, policy))
         for web_server_id in lb_server['web_servers']:
             web_server_vm_id = settings['vms']['web_server'][web_server_id]['vm_id']
             pve.ssh_run(vm_id,
@@ -241,7 +242,6 @@ def clear_lb_server():
         pve.ssh_run(vm_id, "sudo service haproxy stop")
 
 
-@process.spawn(daemon=True)
 def clear_faban_client(vm_id):
     pve.ssh_run(vm_id,
                 "sudo docker stop faban_client_%s;"
@@ -249,27 +249,11 @@ def clear_faban_client(vm_id):
 
 
 def clear():
-    run_mysql = clear_mysql_server()
-    run_memcache = clear_memcache_server()
-    run_web = clear_web_server()
-    run_lb = clear_lb_server()
-    runs = []
+    clear_mysql_server()
+    clear_memcache_server()
+    clear_web_server()
+    clear_lb_server()
     for faban_client in settings['vms']['faban_client']:
         vm_id = faban_client['vm_id']
-        runs.append(clear_faban_client(vm_id))
+        clear_faban_client(vm_id)
 
-    run_mysql.join()
-    run_memcache.join()
-    run_web.join()
-    run_lb.join()
-    for i in range(len(runs)):
-        runs[i].join()
-
-
-def clear_run():
-    runs = []
-    for faban_client in settings['vms']['faban_client']:
-        vm_id = faban_client['vm_id']
-        runs.append(clear_faban_client(vm_id))
-    for i in range(len(runs)):
-        runs[i].join()
