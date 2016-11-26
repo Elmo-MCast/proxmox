@@ -1,5 +1,5 @@
 from pebble import process
-from fabric.api import *
+import fabric.api as fab
 import pve
 import results
 
@@ -9,29 +9,32 @@ settings = {
     'vms': {
         'mysql_server': [
             {'vm_id': 206, 'lb_server': 0},
-            {'vm_id': 216, 'lb_server': 0},
-            {'vm_id': 226, 'lb_server': 0},
-            {'vm_id': 236, 'lb_server': 0}
+            {'vm_id': 207, 'lb_server': 0},
+            {'vm_id': 208, 'lb_server': 0},
+            {'vm_id': 209, 'lb_server': 0}
         ],
         'memcache_server': [
+            {'vm_id': 206},
             {'vm_id': 207},
-            {'vm_id': 217},
-            {'vm_id': 227},
-            {'vm_id': 237}
+            {'vm_id': 208},
+            {'vm_id': 209}
         ],
         'web_server': [
-            {'vm_id': 207, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
-            {'vm_id': 217, 'pm_max_childs': 80, 'mysql_server': 1, 'memcache_server': 1},
-            {'vm_id': 227, 'pm_max_childs': 80, 'mysql_server': 2, 'memcache_server': 2},
-            {'vm_id': 237, 'pm_max_childs': 80, 'mysql_server': 3, 'memcache_server': 3}
+            {'vm_id': 206, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0},
+            {'vm_id': 207, 'pm_max_childs': 80, 'mysql_server': 1, 'memcache_server': 1},
+            {'vm_id': 208, 'pm_max_childs': 80, 'mysql_server': 2, 'memcache_server': 2},
+            {'vm_id': 209, 'pm_max_childs': 80, 'mysql_server': 3, 'memcache_server': 3}
         ],
         'faban_client': [
-            {'vm_id': 208, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 209, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
             {'vm_id': 210, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
             {'vm_id': 211, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
             {'vm_id': 212, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
-            {'vm_id': 213, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0}
+            {'vm_id': 213, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
+            {'vm_id': 214, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
+            {'vm_id': 215, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
+            {'vm_id': 216, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
+            {'vm_id': 217, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0},
+            {'vm_id': 218, 'load_scale': 1, 'steady_state': 60, 'lb_server': 0}
         ],
         'lb_server': [
             {'vm_id': 205, 'web_servers': [0]}
@@ -165,13 +168,13 @@ def configure():
 
 @process.spawn(daemon=True)
 def run_faban_client(vm_id, web_server_vm_id, load_scale):
-    local("rm -f results/faban_client_%s.log" % (vm_id,))
+    fab.local("rm -f results/faban_client_%s.log" % (vm_id,))
     pve.ssh_run(vm_id,
                 "sudo docker exec faban_client_%s /etc/bootstrap.sh 10.10.10.%s %s"
                 % (vm_id, web_server_vm_id, load_scale),
                 "/tmp/faban_client_%s.log" % (vm_id,))
-    get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
-    run("rm -f /tmp/faban_client_%s.log" % (vm_id,))  # TODO: check why this command doesn't work.
+    fab.get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
+    fab.run("rm -f /tmp/faban_client_%s.log" % (vm_id,))  # TODO: check why this command doesn't work.
 
 
 def run():

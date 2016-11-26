@@ -1,5 +1,5 @@
 from pebble import process
-from fabric.api import *
+import fabric.api as fab
 import pve
 import results
 
@@ -113,13 +113,13 @@ def configure():
 
 @process.spawn(daemon=True)
 def run_faban_client(vm_id, web_server_vm_id, load_scale):
-    local('rm -f results/faban_client_%s.log' % (vm_id,))
+    fab.local('rm -f results/faban_client_%s.log' % (vm_id,))
     pve.ssh_run(vm_id,
                 "sudo docker run --net host --name faban_client_%s cloudsuite/web-serving:faban_client 10.10.10.%s %s"
                 % (vm_id, web_server_vm_id, load_scale),
                 "/tmp/faban_client_%s.log" % (vm_id,))
-    get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
-    run("rm -f /tmp/faban_client_%s.log" % (vm_id,))  # TODO: check why this command doesn't work.
+    fab.get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
+    fab.run("rm -f /tmp/faban_client_%s.log" % (vm_id,))
 
 
 def run():
