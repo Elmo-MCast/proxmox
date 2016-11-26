@@ -20,7 +20,8 @@ settings = {
             {'vm_id': 208, 'load_scale': 7, 'web_server': 0}
         ]
     },
-    'vm_prefix': 'web-serving'
+    'vm_prefix': 'web-serving',
+    'base_vm_id': 198
 }
 
 # Helpers
@@ -46,7 +47,7 @@ def add_hosts():
 
 
 def generate():
-    pve.generate_vms(settings['vm_prefix'], *vm_id_list)
+    pve.generate_vms(settings['base_vm_id'], settings['vm_prefix'], *vm_id_list)
     add_hosts()
 
 
@@ -54,33 +55,28 @@ def destroy():
     pve.destroy_vms(*vm_id_list)
 
 
-def configure_common():
-    for vm_id in vm_id_list:
-        pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id, "curl -sSL https://get.docker.com/ | sh")
-
-
+@process.spawn(daemon=True)
 def configure_mysql_server():
     for mysql_server in settings['vms']['mysql_server']:
         vm_id = mysql_server['vm_id']
         web_server_vm_id = settings['vms']['web_server'][mysql_server['web_server']]['vm_id']
         pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:db_server")
         pve.ssh_run(vm_id,
                     "sudo docker run -dt --net host --name mysql_server_%s cloudsuite/web-serving:db_server 10.10.10.%s"
                     % (vm_id, web_server_vm_id,))
 
 
+@process.spawn(daemon=True)
 def configure_memcache_server():
     for memcache_server in settings['vms']['memcache_server']:
         vm_id = memcache_server['vm_id']
         pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:memcached_server")
         pve.ssh_run(vm_id,
                     "sudo docker run -dt --net=host --name=memcache_server_%s cloudsuite/web-serving:memcached_server"
                     % (vm_id,))
 
 
+@process.spawn(daemon=True)
 def configure_web_server():
     for web_server in settings['vms']['web_server']:
         vm_id = web_server['vm_id']
@@ -88,26 +84,20 @@ def configure_web_server():
         mysql_server_vm_id = settings['vms']['mysql_server'][web_server['mysql_server']]['vm_id']
         memcache_server_vm_id = settings['vms']['memcache_server'][web_server['memcache_server']]['vm_id']
         pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:web_server")
         pve.ssh_run(vm_id,
                     "sudo docker run -dt --net=host --name=web_server_%s cloudsuite/web-serving:web_server "
                     "/etc/bootstrap.sh mysql_server_%s memcache_server_%s %s"
                     % (vm_id, mysql_server_vm_id, memcache_server_vm_id, pm_max_childs))
 
 
-def configure_faban_client():
-    for faban_client in settings['vms']['faban_client']:
-        vm_id = faban_client['vm_id']
-        pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id, "sudo docker pull cloudsuite/web-serving:faban_client")
-
-
 def configure():
-    configure_common()
-    configure_mysql_server()
-    configure_memcache_server()
-    configure_web_server()
-    configure_faban_client()
+    run_mysql = configure_mysql_server()
+    run_memcache = configure_memcache_server()
+    run_web = configure_web_server()
+
+    run_mysql.join()
+    run_memcache.join()
+    run_web.join()
 
 
 @process.spawn(daemon=True)
@@ -136,16 +126,64 @@ def run():
 
 
 @process.spawn(daemon=True)
+def clear_mysql_server():
+    for mysql_server in settings['vms']['mysql_server']:
+        vm_id = mysql_server['vm_id']
+        pve.is_vm_ready(vm_id)
+        pve.ssh_run(vm_id,
+                    "sudo docker stop mysql_server_%s;"
+                    "sudo docker rm mysql_server_%s" % (vm_id, vm_id))
+
+
+@process.spawn(daemon=True)
+def clear_memcache_server():
+    for memcache_server in settings['vms']['memcache_server']:
+        vm_id = memcache_server['vm_id']
+        pve.is_vm_ready(vm_id)
+        pve.ssh_run(vm_id,
+                    "sudo docker stop memcache_server_%s;"
+                    "sudo docker rm memcache_server_%s" % (vm_id, vm_id))
+
+
+@process.spawn(daemon=True)
+def clear_web_server():
+    for web_server in settings['vms']['web_server']:
+        vm_id = web_server['vm_id']
+        pve.is_vm_ready(vm_id)
+        pve.ssh_run(vm_id,
+                    "sudo docker stop web_server_%s;"
+                    "sudo docker rm web_server_%s" % (vm_id, vm_id))
+
+
+@process.spawn(daemon=True)
 def clear_faban_client(vm_id):
+    pve.is_vm_ready(vm_id)
     pve.ssh_run(vm_id,
                 "sudo docker stop faban_client_%s;"
                 "sudo docker rm faban_client_%s" % (vm_id, vm_id))
 
 
 def clear():
+    run_mysql = clear_mysql_server()
+    run_memcache = clear_memcache_server()
+    run_web = clear_web_server()
     runs = []
     for faban_client in settings['vms']['faban_client']:
         vm_id = faban_client['vm_id']
         runs.append(clear_faban_client(vm_id))
+
+    run_mysql.join()
+    run_memcache.join()
+    run_web.join()
+    for i in range(len(runs)):
+        runs[i].join()
+
+
+def clear_run():
+    runs = []
+    for faban_client in settings['vms']['faban_client']:
+        vm_id = faban_client['vm_id']
+        runs.append(clear_faban_client(vm_id))
+
     for i in range(len(runs)):
         runs[i].join()
