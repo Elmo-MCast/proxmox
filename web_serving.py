@@ -8,30 +8,16 @@ import results
 settings = {
     'vms': {
         'mysql_server': [
-            {
-                'vm_id': 206,
-                'web_server': 0
-            }
+            {'vm_id': 206, 'web_server': 0}
         ],
         'memcache_server': [
-            {
-                'vm_id': 207
-            }
+            {'vm_id': 207}
         ],
         'web_server': [
-            {
-                'vm_id': 207,
-                'pm_max_childs': 80,
-                'mysql_server': 0,
-                'memcache_server': 0
-            },
+            {'vm_id': 207, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0}
         ],
         'faban_client': [
-            {
-                'vm_id': 208,
-                'load_scale': 7,
-                'web_server': 0
-            }
+            {'vm_id': 208, 'load_scale': 7, 'web_server': 0}
         ]
     },
     'vm_prefix': 'web-serving'
