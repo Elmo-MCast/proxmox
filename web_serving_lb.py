@@ -26,16 +26,7 @@ settings = {
             {'vm_id': 210, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0}
         ],
         'faban_client': [
-            {'vm_id': 211, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 212, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 213, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 214, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 215, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 216, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 217, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 218, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0},
-            {'vm_id': 219, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0}
-
+            {'vm_id': i, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0} for i in range(211, 221)
         ],
         'lb_server': [
             {'vm_id': 205, 'web_servers': [0, 1, 2, 3], 'policy': 'roundrobin'}
