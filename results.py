@@ -20,3 +20,7 @@ def clean_results(log_file):
         results.append(sample.Sample('Average response time', avg_avg, 'ms'))
 
     return results
+
+
+def print_results(log_file):
+    print clean_results(log_file)
