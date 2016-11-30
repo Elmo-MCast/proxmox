@@ -26,7 +26,8 @@ settings = {
             {'vm_id': 210, 'pm_max_childs': 80, 'mysql_server': 0, 'memcache_server': 0}
         ],
         'faban_client': [
-            {'vm_id': i, 'load_scale': 1, 'steady_state': 300, 'lb_server': 0} for i in range(211, 221)
+            {'vm_id': 211, 'load_scale': 1, 'steady_state': 30, 'lb_server': 0, 'clients': [212, 213, 214, 215, 216, 217]},
+            {'vm_id': 218, 'load_scale': 1, 'steady_state': 30, 'lb_server': 0, 'clients': [219, 220, 221, 222, 223, 224]}
         ],
         'lb_server': [
             {'vm_id': 205, 'web_servers': [0, 1, 2, 3], 'policy': 'roundrobin'}
@@ -34,8 +35,8 @@ settings = {
             # mysql and memcache server, for now.
         ]
     },
-    'vm_prefix': 'web-serving',
-    'base_vm_id': 197
+    'vm_prefix': 'web-serving-lb',
+    'base_vm_id': 196
 }
 
 # Helpers
@@ -120,12 +121,16 @@ def configure_faban_client():
         vm_id = faban_client['vm_id']
         steady_state = faban_client['steady_state']
         pve.is_vm_ready(vm_id)
-        pve.ssh_run(vm_id,
-                    "sudo docker run -dt --net host --name faban_client_%s --entrypoint bash cloudsuite/web-serving:faban_client"
-                    % (vm_id,))
-        pve.ssh_run(vm_id,
-                    "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' /etc/bootstrap.sh"
-                    % (vm_id, steady_state))
+        for client_id in faban_client['clients']:
+            pve.ssh_run(vm_id,
+                        "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash cloudsuite/web-serving:faban_client"
+                        % (client_id,))
+            pve.ssh_run(vm_id,
+                        "sudo ./pipework/pipework br0 -i eth0 faban_client_%s 10.10.10.%s/24"
+                        % (client_id, client_id))
+            pve.ssh_run(vm_id,
+                        "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' /etc/bootstrap.sh"
+                        % (client_id, steady_state))
 
 
 @process.spawn(daemon=True)
@@ -134,6 +139,7 @@ def configure_lb_server():
         vm_id = lb_server['vm_id']
         policy = lb_server['policy']
         pve.is_vm_ready(vm_id)
+        pve.ssh_run(vm_id, "sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/haproxy")
         pve.ssh_run(vm_id,
                     "echo 'frontend web-serving\n    bind 10.10.10.%s:8080\n    default_backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg;"
                     "echo 'backend web-serving-backend\n    balance %s' | sudo tee -a /etc/haproxy/haproxy.cfg"
@@ -162,14 +168,14 @@ def configure():
 
 
 @process.spawn(daemon=True)
-def run_faban_client(vm_id, web_server_vm_id, load_scale):
-    fab.local("rm -f results/faban_client_%s.log" % (vm_id,))
+def run_faban_client(vm_id, client_id, web_server_vm_id, load_scale):
+    fab.local("rm -f results/faban_client_%s.log" % (client_id,))
     pve.ssh_run(vm_id,
                 "sudo docker exec faban_client_%s /etc/bootstrap.sh 10.10.10.%s %s"
-                % (vm_id, web_server_vm_id, load_scale),
-                "/tmp/faban_client_%s.log" % (vm_id,))
-    fab.get("/tmp/faban_client_%s.log" % (vm_id,), "results/")
-    fab.run("rm -f /tmp/faban_client_%s.log" % (vm_id,))
+                % (client_id, web_server_vm_id, load_scale),
+                "/tmp/faban_client_%s.log" % (client_id,))
+    fab.get("/tmp/faban_client_%s.log" % (client_id,), "results/")
+    fab.run("rm -f /tmp/faban_client_%s.log" % (client_id,))
 
 
 def run():
@@ -178,12 +184,13 @@ def run():
         vm_id = faban_client['vm_id']
         load_scale = faban_client['load_scale']
         lb_server_vm_id = settings['vms']['lb_server'][faban_client['lb_server']]['vm_id']
-        runs.append({
-            'run': run_faban_client(vm_id, lb_server_vm_id, load_scale),
-            'vm_id': vm_id})
+        for client_id in faban_client['clients']:
+            runs.append({
+                'run': run_faban_client(vm_id, client_id, lb_server_vm_id, load_scale),
+                'client_id': client_id})
     for i in range(len(runs)):
         runs[i]['run'].join()
-        print 'faban_client_%s' % (runs[i]['vm_id'],) + str(results.clean_results('results/faban_client_%s.log' % (runs[i]['vm_id'],)))
+        print 'faban_client_%s' % (runs[i]['client_id'],) + str(results.clean_results('results/faban_client_%s.log' % (runs[i]['client_id'],)))
 
 
 def clear_mysql_server():
