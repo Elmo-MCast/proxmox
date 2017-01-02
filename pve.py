@@ -183,3 +183,13 @@ def destroy_vms(*vm_ids):
 def add_host(vm_id, host_vm_id, host_vm_name):
     ssh_run(vm_id, "echo '10.10.10.%s %s' | sudo tee -a /etc/hosts"
             % (host_vm_id, host_vm_name))
+
+
+def add_route(vm_id, prefix, iface):
+    ssh_run(vm_id,
+            "sudo ip route add %s dev %s" % (prefix, iface))
+
+
+def del_route(vm_id, prefix, iface):
+    ssh_run(vm_id,
+            "sudo ip route del %s dev %s" % (prefix, iface))
