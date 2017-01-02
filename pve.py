@@ -1,39 +1,63 @@
 from fabric.api import *
+import os
 
 """ Configurations """
 
-template = {
-    'key_file': '/root/ssh/id_rsa'
-}
-
-env.hosts = ['128.112.168.28']
+env.hosts = ['128.112.168.26']
 env.user = 'root'
-env.password = 'PrincetonP4OVS3'
+env.password = 'PrincetonP4OVS1'
 env.warn_only = True
+env["poweredge_name"] = 'mshahbaz-poweredge-1-pve'
+# env['vm_ssh_key'] = '/root/ssh/id_rsa'
+env['vm_ssh_passwd'] = 'nopass'
+
 
 """ Basic PVE Commands"""
 
 
 def ssh_run(vm_id, command, log_file=None):
+    if not "vm_ssh_passwd" in env:
+        abort("couldn't find 'vm_ssh_passwd' variable in env.")
+
     if log_file:
-        run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\" > %s"
-            % (template['key_file'], vm_id, command, log_file))
+        return run("sshpass -p " + env['vm_ssh_passwd'] +
+                   " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\" > %s" % (vm_id, command, log_file))
     else:
-        run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\""
-            % (template['key_file'], vm_id, command))
+        return run("sshpass -p " + env['vm_ssh_passwd'] +
+                   " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\"" % (vm_id, command))
+
+
+def scp_get(vm_id, src, dst, log_file=None):
+    if not "vm_ssh_passwd" in env:
+        abort("couldn't find 'vm_ssh_passwd' variable in env.")
+
+    if log_file:
+        run("sshpass -p " + env['vm_ssh_passwd'] +
+            " scp -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s:%s %s > %s"
+            % (vm_id, src, dst, log_file))
+    else:
+        run("sshpass -p " + env['vm_ssh_passwd'] +
+            " scp -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s:%s %s"
+            % (vm_id, src, dst))
 
 
 def clone_vm(base_vm_id, vm_id, vm_name, full=False):
+    if not "poweredge_name" in env:
+        abort("couldn't find 'poweredge_name' variable in env.")
+
     if full:
-        run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s -full"
+        run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/clone -newid %s -name %s -full"
             % (base_vm_id, vm_id, vm_name))
     else:
-        run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/clone -newid %s -name %s"
+        run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/clone -newid %s -name %s"
             % (base_vm_id, vm_id, vm_name))
 
 
 def start_vm(vm_id):
-    run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/status/start" % (vm_id,))
+    if not "poweredge_name" in env:
+        abort("couldn't find 'poweredge_name' variable in env.")
+
+    run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/status/start" % (vm_id,))
 
 
 def start_vms(*vm_ids):
@@ -42,7 +66,10 @@ def start_vms(*vm_ids):
 
 
 def stop_vm(vm_id):
-    run("pvesh create /nodes/mshahbaz-poweredge-3-pve/qemu/%s/status/stop" % (vm_id,))
+    if not "poweredge_name" in env:
+        abort("couldn't find 'poweredge_name' variable in env.")
+
+    run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/status/stop" % (vm_id,))
 
 
 def stop_vms(*vm_ids):
@@ -51,7 +78,10 @@ def stop_vms(*vm_ids):
 
 
 def delete_vm(vm_id):
-    run("pvesh delete /nodes/mshahbaz-poweredge-3-pve/qemu/%s" % (vm_id,))
+    if not "poweredge_name" in env:
+        abort("couldn't find 'poweredge_name' variable in env.")
+
+    run("pvesh delete /nodes/"+env["poweredge_name"]+"/qemu/%s" % (vm_id,))
 
 
 def delete_vms(*vm_ids):
@@ -69,12 +99,42 @@ def sync_vm(vm_id):
 
 
 def is_vm_ready(vm_id):
-    run("ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s 'date'; "
+    if not "vm_ssh_passwd" in env:
+        abort("couldn't find 'vm_ssh_passwd' variable in env.")
+
+    run("sshpass -p " + env['vm_ssh_passwd'] +
+        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) + " 'date'; "
         "while test $? -gt 0; do "
         "  sleep 5; echo 'Trying again ...'; "
-        "  ssh -i %s -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s 'date'; "
-        "done" % (template['key_file'], vm_id,
-                  template['key_file'], vm_id))
+        "  " +
+        "sshpass -p " + env['vm_ssh_passwd'] +
+        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) + " 'date'; "
+        "done")
+
+
+# Note: using sshpass instead of ssh keys.
+# def install_ssh_key_on_host(key_local_path):
+#     if "vm_ssh_key" in env:
+#         key_name = os.path.basename(env["vm_ssh_key"])
+#         key_path = os.path.dirname(env["vm_ssh_key"])
+#         run('mkdir -p ' + key_path)
+#         put(key_local_path+"/" + key_name, key_path)
+#         put(key_local_path + "/" + key_name + ".pub", key_path)
+#         run("chmod 600 " + env["vm_ssh_key"])
+#     else:
+#         abort("couldn't find 'vm_ssh_key' variable in env.")
+
+
+# def remove_ssh_key_on_host():
+#     if "vm_ssh_key" in env:
+#         key_path = os.path.dirname(env["vm_ssh_key"])
+#         run('rm -rf ' + key_path)
+#     else:
+#         abort("couldn't find 'vm_ssh_key' variable in env.")
+
+
+def configure_host():
+    run('apt-get install sshpass')
 
 
 def configure_vm_network(old_vm_id, vm_id):
@@ -87,6 +147,12 @@ def configure_vm_network(old_vm_id, vm_id):
                old_vm_id, vm_id,
                old_vm_id, vm_id,
                old_vm_id, vm_id))
+
+
+# Note: make sure that base VM is set with nopasswd for sudo.
+# def configure_vm_sudo_nopasswd(vm_id):
+#     ssh_run(vm_id,
+#             "sudo sed -i 's/sudo\tALL=(ALL:ALL) ALL/sudo\tALL=(ALL:ALL) NOPASSWD:ALL/g' /etc/sudoers")
 
 
 def generate_vm(base_vm_id, vm_id, vm_name, full=False):
