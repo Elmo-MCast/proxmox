@@ -27,6 +27,21 @@ def ssh_run(vm_id, command, log_file=None):
                    " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\"" % (vm_id, command))
 
 
+def parallel_run(commands):
+    if not "vm_ssh_passwd" in env:
+        abort("couldn't find 'vm_ssh_passwd' variable in env.")
+
+    if isinstance(commands, dict):
+        run_script = "parallel :::"
+        for vm_id in commands:
+            run_script += " \\\n"
+            run_script += "'sshpass -p " + env['vm_ssh_passwd'] + \
+                          " ssh mshahbaz@10.10.10.%s \"%s\"'" % (vm_id, commands[vm_id])
+        run(run_script)
+    else:
+        abort("incorrect args (should be a dict of vm_id/command pair).")
+
+
 def scp_get(vm_id, src, dst, log_file=None):
     if not "vm_ssh_passwd" in env:
         abort("couldn't find 'vm_ssh_passwd' variable in env.")
@@ -134,7 +149,7 @@ def is_vm_ready(vm_id):
 
 
 def configure_host():
-    run('apt-get install sshpass')
+    run('apt-get install sshpass parallel')
 
 
 def configure_vm_network(old_vm_id, vm_id):
