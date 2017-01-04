@@ -3,39 +3,42 @@ import os
 
 """ Configurations """
 
-env.hosts = ['128.112.168.26']
-env.user = 'root'
-env.password = 'PrincetonP4OVS1'
 env.warn_only = True
-env["poweredge_name"] = 'mshahbaz-poweredge-1-pve'
-# env['vm_ssh_key'] = '/root/ssh/id_rsa'
-env['vm_ssh_passwd'] = 'nopass'
 
+env.hosts = ['root@128.112.168.26']
+env.user = 'root'
+env.password = 'PrincetonP4OVS'
+
+env.roledefs = {
+    'server': ['root@128.112.168.26']
+}
+
+env['hostnames'] = ['mshahbaz-poweredge-1-pve']
+env['vms'] = {
+    'ssh': {
+        'key_filename': '',
+        'password': 'nopass'
+    }
+}
 
 """ Basic PVE Commands"""
 
 
 def ssh_run(vm_id, command, log_file=None):
-    if not "vm_ssh_passwd" in env:
-        abort("couldn't find 'vm_ssh_passwd' variable in env.")
-
     if log_file:
-        return run("sshpass -p " + env['vm_ssh_passwd'] +
+        return run("sshpass -p " + env['vms']['ssh']['password'] +
                    " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\" > %s" % (vm_id, command, log_file))
     else:
-        return run("sshpass -p " + env['vm_ssh_passwd'] +
+        return run("sshpass -p " + env['vms']['ssh']['password'] +
                    " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s \"%s\"" % (vm_id, command))
 
 
-def parallel_run(commands):
-    if not "vm_ssh_passwd" in env:
-        abort("couldn't find 'vm_ssh_passwd' variable in env.")
-
+def parallel_ssh_run(commands):
     if isinstance(commands, dict):
         run_script = "parallel :::"
         for vm_id in commands:
             run_script += " \\\n"
-            run_script += "'sshpass -p " + env['vm_ssh_passwd'] + \
+            run_script += "'sshpass -p " + env['vms']['ssh']['password'] + \
                           " ssh mshahbaz@10.10.10.%s \"%s\"'" % (vm_id, commands[vm_id])
         run(run_script)
     else:
@@ -43,36 +46,28 @@ def parallel_run(commands):
 
 
 def scp_get(vm_id, src, dst, log_file=None):
-    if not "vm_ssh_passwd" in env:
-        abort("couldn't find 'vm_ssh_passwd' variable in env.")
-
     if log_file:
-        run("sshpass -p " + env['vm_ssh_passwd'] +
+        run("sshpass -p " + env['vms']['ssh']['password'] +
             " scp -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s:%s %s > %s"
             % (vm_id, src, dst, log_file))
     else:
-        run("sshpass -p " + env['vm_ssh_passwd'] +
+        run("sshpass -p " + env['vms']['ssh']['password'] +
             " scp -o 'StrictHostKeyChecking no' mshahbaz@10.10.10.%s:%s %s"
             % (vm_id, src, dst))
 
 
 def clone_vm(base_vm_id, vm_id, vm_name, full=False):
-    if not "poweredge_name" in env:
-        abort("couldn't find 'poweredge_name' variable in env.")
-
     if full:
-        run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/clone -newid %s -name %s -full"
-            % (base_vm_id, vm_id, vm_name))
+        run("pvesh create /nodes/" + env['hostnames'][env.hosts.index(env.user + '@' + env.host)] +
+            "/qemu/%s/clone -newid %s -name %s -full" % (base_vm_id, vm_id, vm_name))
     else:
-        run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/clone -newid %s -name %s"
-            % (base_vm_id, vm_id, vm_name))
+        run("pvesh create /nodes/" + env['hostnames'][env.hosts.index(env.user + '@' + env.host)] +
+            "/qemu/%s/clone -newid %s -name %s" % (base_vm_id, vm_id, vm_name))
 
 
 def start_vm(vm_id):
-    if not "poweredge_name" in env:
-        abort("couldn't find 'poweredge_name' variable in env.")
-
-    run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/status/start" % (vm_id,))
+    run("pvesh create /nodes/" + env['hostnames'][env.hosts.index(env.user + '@' + env.host)] +
+        "/qemu/%s/status/start" % (vm_id,))
 
 
 def start_vms(*vm_ids):
@@ -81,10 +76,8 @@ def start_vms(*vm_ids):
 
 
 def stop_vm(vm_id):
-    if not "poweredge_name" in env:
-        abort("couldn't find 'poweredge_name' variable in env.")
-
-    run("pvesh create /nodes/"+env["poweredge_name"]+"/qemu/%s/status/stop" % (vm_id,))
+    run("pvesh create /nodes/" + env['hostnames'][env.hosts.index(env.user + '@' + env.host)] +
+        "/qemu/%s/status/stop" % (vm_id,))
 
 
 def stop_vms(*vm_ids):
@@ -93,10 +86,7 @@ def stop_vms(*vm_ids):
 
 
 def delete_vm(vm_id):
-    if not "poweredge_name" in env:
-        abort("couldn't find 'poweredge_name' variable in env.")
-
-    run("pvesh delete /nodes/"+env["poweredge_name"]+"/qemu/%s" % (vm_id,))
+    run("pvesh delete /nodes/" + env['hostnames'][env.hosts.index(env.user + '@' + env.host)] + "/qemu/%s" % (vm_id,))
 
 
 def delete_vms(*vm_ids):
@@ -114,16 +104,15 @@ def sync_vm(vm_id):
 
 
 def is_vm_ready(vm_id):
-    if not "vm_ssh_passwd" in env:
-        abort("couldn't find 'vm_ssh_passwd' variable in env.")
-
-    run("sshpass -p " + env['vm_ssh_passwd'] +
-        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) + " 'date'; "
+    run("sshpass -p " + env['vms']['ssh']['password'] +
+        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) +
+        " 'date'; "
         "while test $? -gt 0; do "
         "  sleep 5; echo 'Trying again ...'; "
         "  " +
-        "sshpass -p " + env['vm_ssh_passwd'] +
-        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) + " 'date'; "
+        "sshpass -p " + env['vms']['ssh']['password'] +
+        " ssh -o 'StrictHostKeyChecking no' mshahbaz@10.10.10." + str(vm_id) +
+        " 'date'; "
         "done")
 
 
