@@ -11,6 +11,7 @@ fab.env.warn_only = True
 fab.env["poweredge_name"] = 'mshahbaz-poweredge-1-pve'
 # fab.env['vm_ssh_key'] = '/root/ssh/httperf_id_rsa'
 fab.env['vm_ssh_passwd'] = 'nopass'
+fab.env['jupyter_ip'] = '128.112.168.28'
 
 
 # Settings
@@ -36,7 +37,7 @@ settings = {
         'num-calls': 1,
         'rate': 20,
         'ramp': 20,
-        'iters': 2,
+        'iters': 50,
         'timeout': 1
     }
 }
@@ -113,13 +114,13 @@ def are_clients_rdy():
 
 
 def pre_run_httperf_client(vm_id):
-    fab.local('rm -f results/httperf_client_%s.log; rm -f results/httperf_client_%s.csv' % (vm_id, vm_id))
+    fab.local('rm -f results/httperf_client_%s.log results/httperf_client_%s.csv' % (vm_id, vm_id))
 
-    httperf_script = "cd ~/httperf-plot;" \
+    httperf_script = "cd ~/httperf-plot; " \
                      "python httperf-plot.py --server %s --port %s " \
                      "--hog --num-conns %s --num-calls %s --rate %s " \
                      "--ramp-up %s,%s --timeout %s " \
-                     "--csv %s > %s;" \
+                     "--csv %s > %s; " \
                      "cd ~/" \
                      % (settings['httperf']['vip'], settings['httperf']['port'],
                         settings['httperf']['num-conns'], settings['httperf']['num-calls'], settings['httperf']['rate'],
@@ -139,10 +140,10 @@ def post_run_httperf_client(vm_id):
     pve.scp_get(vm_id, "~/httperf-plot/httperf_client_%s.log" % (vm_id,), "/tmp/httperf_client_%s.log" % (vm_id,))
     fab.get("/tmp/httperf_client_%s.csv" % (vm_id,), "results/")
     fab.get("/tmp/httperf_client_%s.log" % (vm_id,), "results/")
-    pve.ssh_run(vm_id, "rm -f ~/httperf-plot/httperf_client_%s.csv; rm -f ~/httperf-plot/httperf_client_%s.log"
-                       "rm -f ~/httperf_script.sh"
+    pve.ssh_run(vm_id, "rm -f ~/httperf-plot/httperf_client_%s.csv ~/httperf-plot/httperf_client_%s.log "
+                       "~/httperf_script.sh"
                 % (vm_id, vm_id))
-    fab.run("rm -f /tmp/httperf_client_%s.csv; rm -f /tmp/httperf_client_%s.log" % (vm_id, vm_id))
+    fab.run("rm -f /tmp/httperf_client_%s.csv /tmp/httperf_client_%s.log" % (vm_id, vm_id))
 
 
 def post_run_httperf_clients():
