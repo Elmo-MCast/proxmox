@@ -1,8 +1,8 @@
 # from pebble import process
 from datetime import datetime
+import json
 import fabric.api as fab
 import pve
-
 
 """ Configurations """
 
@@ -14,47 +14,18 @@ fab.env.roledefs = {
 }
 fab.env['analyst_path'] = '/root/mshahbaz/notebooks/baseerat/runs'
 
-""" 'httperf' Commands"""
+""" 'httperf' settings """
 
-settings = {
-    'vms': {
-        'base_vm_id': 105,
-        # 'clients': [110],
-        'clients': [110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125],
-        # 'type': 'NAT'
-        'type': {
-            'DR': {
-                'prefix': '172.17.60.0/24',
-                'iface': 'eth1'
-            }
-        }
-    },
-    # 'httperf': {
-    #     'vip': '172.17.60.201',
-    #     'port': 80,
-    #     'num-conns': 2000,
-    #     'num-calls': 1,
-    #     'rate': 20,
-    #     'ramp': 20,
-    #     'iters': 50,
-    #     'timeout': 1
-    # }
-    'httperf': {
-        'vip': '172.17.60.201',
-        'port': 80,
-        'num-conns': 100,
-        'num-calls': 1,
-        'rate': 20,
-        'ramp': 20,
-        'iters': 1,
-        'timeout': 1
-    }
-}
+settings = None
+with open("httperf.json") as json_file:
+    settings = json.load(json_file)
+
+""" 'httperf' Commands"""
 
 
 @fab.roles('client')
 def generate_client(base_vm_id, vm_id):
-    pve.generate_vm(base_vm_id, vm_id, 'feedbackd-client'+str(vm_id), True)
+    pve.generate_vm(base_vm_id, vm_id, 'feedbackd-client' + str(vm_id), True)
 
 
 @fab.roles('client')
@@ -67,7 +38,9 @@ def configure_client(base_vm_id, vm_id):
     pve.ssh_run(vm_id,
                 "sudo sed -i 's/address 12.12.12.%s/address 12.12.12.%s/g' /etc/network/interfaces"
                 % (base_vm_id, vm_id))
-    pve.ssh_run(vm_id, "sudo apt-get install git httperf")
+    pve.ssh_run(vm_id, "sudo apt-get install git")
+    pve.ssh_run(vm_id, "git clone https://github.com/mshahbaz/httperf.git")
+    pve.ssh_run(vm_id, "cd ~/httperf;autoreconf -i;./configure;make;sudo make install;cd ~/")
     pve.ssh_run(vm_id, "git clone https://github.com/mshahbaz/httperf-plot.git")
     pve.sync_vm(vm_id)
     pve.reboot_vm(vm_id)
@@ -133,7 +106,7 @@ def are_clients_rdy():
 def pre_run_httperf_client(vm_id):
     httperf_script = "cd ~/httperf-plot; " \
                      "python httperf-plot.py --server %s --port %s " \
-                     "--hog --num-conns %s --num-calls %s --rate %s " \
+                     "--hog --verbose --num-conns %s --num-calls %s --rate %s " \
                      "--ramp-up %s,%s --timeout %s " \
                      "--csv %s > %s; " \
                      "cd ~/" \

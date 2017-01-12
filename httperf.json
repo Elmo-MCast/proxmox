@@ -1,0 +1,23 @@
+{
+    "vms": {
+        "base_vm_id": 105,
+        "clients": [110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125],
+        "type-unused": "NAT",
+        "type": {
+            "DR": {
+                "prefix": "172.17.60.0/24",
+                "iface": "eth1"
+            }
+        }
+    },
+    "httperf": {
+        "vip": "172.17.60.201",
+        "port": 80,
+        "num-conns": 2000,
+        "num-calls": 1,
+        "rate": 20,
+        "ramp": 20,
+        "iters": 50,
+        "timeout": 1
+    }
+}
