@@ -16,7 +16,6 @@ fab.env['analyst_path'] = '/root/mshahbaz/notebooks/baseerat/runs'
 
 """ 'httperf' settings """
 
-settings = None
 with open("httperf.json") as json_file:
     settings = json.load(json_file)
 
