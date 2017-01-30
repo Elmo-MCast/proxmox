@@ -1,0 +1,83 @@
+{
+  "env": {
+    "warn_only": true,
+    "hosts": [
+      "root@128.112.168.26",
+      "root@128.112.168.28"
+    ],
+    "roledefs": {
+      "client": [
+        "root@128.112.168.26"
+      ],
+      "analyst": [
+        "root@128.112.168.28"
+      ]
+    },
+    "user": "root",
+    "password": "PrincetonP4OVS",
+    "vm": {
+      "prefix": "12.12.12.",
+      "user": "mshahbaz",
+      "password": "nopass"
+    },
+    "analyst": {
+      "path": "/root/mshahbaz/notebooks/baseerat/runs"
+    }
+  },
+  "httperf": {
+    "cfg": {
+      "vip": "172.17.60.201",
+      "port": 80,
+      "num-conns": 100,
+      "num-calls": 1,
+      "rate": 50,
+      "ramp": 1,
+      "iters": 1,
+      "timeout": 1
+    },
+    "vm": {
+      "base_id": 105,
+      "clients": [
+        110,
+        111
+      ],
+      "clients.bak": [
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125
+      ]
+    },
+    "lb": {
+      "ipvs": {
+        "enable": true,
+        "type": {
+          "DR": {
+            "enable": true,
+            "prefix": "172.17.60.0/24",
+            "iface": "eth1"
+          },
+          "NAT": {
+            "enable": true
+          }
+        }
+      },
+      "haproxy":
+      {
+        "enable": false
+      }
+    }
+  }
+}

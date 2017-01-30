@@ -1,0 +1,15 @@
+{
+  "env": {
+    "warn_only": true,
+    "hosts": [
+      "root@128.112.168.26"
+    ],
+    "user": "root",
+    "password": "PrincetonP4OVS",
+    "vm": {
+      "prefix": "10.10.10.",
+      "user": "mshahbaz",
+      "password": "nopass"
+    }
+  }
+}

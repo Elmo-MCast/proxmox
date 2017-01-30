@@ -1,5 +1,6 @@
 import re
-import sample
+
+from web_serving.helpers import sample
 
 
 def clean_results(log_file):

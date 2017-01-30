@@ -1,0 +1,105 @@
+{
+  "env": {
+    "warn_only": true,
+    "hosts": [
+      "root@128.112.168.27",
+      "root@128.112.168.28"
+    ],
+    "roledefs": {
+      "server": [
+        "root@128.112.168.27"
+      ],
+      "analyst": [
+        "root@128.112.168.28"
+      ]
+    },
+    "user": "root",
+    "password": "PrincetonP4OVS",
+    "vm": {
+      "prefix": "10.10.10.",
+      "user": "mshahbaz",
+      "password": "nopass"
+    }
+  },
+  "web_serving_lb": {
+    "vm": {
+      "base_id": 196
+    },
+    "servers": {
+      "mysql_servers": [
+        {
+          "vm_id": 206,
+          "lb_server": 0
+        },
+        {
+          "vm_id": 207,
+          "lb_server": 0
+        }
+      ],
+      "memcache_servers": [
+        {
+          "vm_id": 206
+        },
+        {
+          "vm_id": 207
+        }
+      ],
+      "web_servers": [
+        {
+          "vm_id": 207,
+          "pm_max_childs": 80,
+          "mysql_server": 0,
+          "memcache_server": 0
+        },
+        {
+          "vm_id": 208,
+          "pm_max_childs": 80,
+          "mysql_server": 0,
+          "memcache_server": 0
+        }
+      ],
+      "lb_servers": [
+        {
+          "vm_id": 205,
+          "web_servers": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "policy": "roundrobin"
+        }
+      ],
+      "faban_clients": [
+        {
+          "vm_id": 211,
+          "load_scale": 1,
+          "steady_state": 30,
+          "lb_server": 0,
+          "clients": [
+            212,
+            213,
+            214,
+            215,
+            216,
+            217
+          ]
+        },
+        {
+          "vm_id": 218,
+          "load_scale": 1,
+          "steady_state": 30,
+          "lb_server": 0,
+          "clients": [
+            219,
+            220,
+            221,
+            222,
+            223,
+            224
+          ]
+        }
+      ]
+    }
+  }
+}
