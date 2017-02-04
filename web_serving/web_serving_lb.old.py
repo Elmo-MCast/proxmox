@@ -63,7 +63,7 @@ def add_hosts():
 
 
 def generate():
-    pve.vm_generate_multi(settings['base_vm_id'], settings['vm_prefix'], *vm_id_list)
+    pve.vm_generate_multi(settings['base_vm_id'], settings['vm_prefix'], [], *vm_id_list)
     add_hosts()
 
 
