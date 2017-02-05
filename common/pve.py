@@ -18,11 +18,11 @@ env['vm'] = settings['env']['vm']
 
 def vm_run(vm_id, command, log_file=None):
     if log_file:
-        return run("sshpass -p %s ssh %s@%s%s \"%s\" > %s"
+        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\" > %s"
                    % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                       vm_id, command, log_file))
     else:
-        return run("sshpass -p %s ssh %s@%s%s \"%s\""
+        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\""
                    % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                       vm_id, command))
 
@@ -64,12 +64,12 @@ def vm_parallel_run(commands, display_only=False):
             if isinstance(commands[vm_id], list):
                 for command in commands[vm_id]:
                     script += " \\\n"
-                    script += "'sshpass -p %s ssh %s@%s%s \"%s\"'" \
+                    script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\"'" \
                               % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                                  vm_id, command.replace("'", "'\\''"))
             else:
                 script += " \\\n"
-                script += "'sshpass -p %s ssh %s@%s%s \"%s\"'" \
+                script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\"'" \
                           % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                              vm_id, commands[vm_id].replace("'", "'\\''"))
 
@@ -83,11 +83,11 @@ def vm_parallel_run(commands, display_only=False):
 
 def vm_get(vm_id, src, dst, log_file=None):
     if log_file:
-        run("sshpass -p %s scp %s@%s%s:%s %s > %s"
+        run("sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s > %s"
             % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                vm_id, src, dst, log_file))
     else:
-        run("sshpass -p %s scp %s@%s%s:%s %s"
+        run("sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s"
             % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                vm_id, src, dst))
 
@@ -97,7 +97,7 @@ def host_parallel_get(commands, display_only=False):
         script = "parallel :::"
         for command in commands:
             script += " \\\n"
-            script += "sshpass -p %s scp %s:%s %s" \
+            script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s:%s %s" \
                       % (env.password, env.host_string, command['src'], command['dst'])
 
         if display_only:
@@ -115,12 +115,12 @@ def vm_parallel_get(commands, display_only=False):
             if isinstance(commands[vm_id], list):
                 for command in commands[vm_id]:
                     script += " \\\n"
-                    script += "sshpass -p %s scp %s@%s%s:%s %s" \
+                    script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s" \
                               % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                                  vm_id, command['src'], command['dst'])
             else:
                 script += " \\\n"
-                script += "sshpass -p %s scp %s@%s%s:%s %s" \
+                script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s" \
                           % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                              vm_id, commands[vm_id]['src'], commands[vm_id]['dst'])
 
@@ -181,10 +181,10 @@ def vm_delete(vm_id):
 
 
 def vm_is_ready(vm_id):
-    run("sshpass -p %s ssh %s@%s%s 'date'; "
+    run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s 'date'; "
         "while test $? -gt 0; do "
         "  sleep 5; echo 'Trying again ...'; "
-        "  sshpass -p %s ssh %s@%s%s 'date'; "
+        "  sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s 'date'; "
         "done"
         % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id),
            env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id)))

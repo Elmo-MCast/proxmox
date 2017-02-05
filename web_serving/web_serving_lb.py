@@ -44,63 +44,20 @@ def setup_scripts():
         "curl https://raw.githubusercontent.com/jpetazzo/pipework/master/pipework > pipework; " \
         "sudo mv pipework /usr/local/bin/; " \
         "sudo chmod a+x /usr/local/bin/pipework; " \
-        "sudo apt-get -y install haproxy arping bridge-utils; "
+        "sudo apt-get -y install haproxy arping openvswitch-switch openvswitch-common; "
     # Add hosts
     for server_name, server_vm_id in server_vm_id_map.iteritems():
         script += "echo %s%s %s | sudo tee -a /etc/hosts; " \
-                  % (fab.env['vm']['prefix'], server_vm_id, server_name)
+                  % (fab.env['web_serving_lb']['vm']['prefix_1'], server_vm_id, server_name)
     scripts.append("echo '%s' > ~/setup_script.sh; " % (script,))
     scripts.append("sh ~/setup_script.sh; ")
     return scripts
 
 
 @fab.roles('server')
-def post_setup_scripts():
-    scripts = dict()
-    for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
-        vm_id = faban_client['vm_id']
-        scripts[vm_id] = \
-            "sudo sed -i 's/auto eth0/#auto eth0/g' /etc/network/interfaces; " \
-            "sudo sed -i 's/iface eth0 inet static/iface eth0 inet manual/g' /etc/network/interfaces; " \
-            "sudo sed -i 's/address %s%s/#address %s%s/g' /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix'], vm_id, fab.env['vm']['prefix'], vm_id) + \
-            "sudo sed -i 's/netmask 255.255.255.0/#netmask 255.255.255.0/g' /etc/network/interfaces; " \
-            "sudo sed -i 's/network %s0/#network %s0/g' /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix'], fab.env['vm']['prefix']) + \
-            "sudo sed -i 's/broadcast %s255/#broadcast %s255/g' /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix'], fab.env['vm']['prefix']) + \
-            "sudo sed -i 's/gateway %s1/#gateway %s1/g' /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix'], fab.env['vm']['prefix']) + \
-            "sudo sed -i 's/dns-nameservers 128.112.136.10/#dns-nameservers 128.112.136.10/g' " \
-            "/etc/network/interfaces; " \
-            "echo | sudo tee -a /etc/network/interfaces; " \
-            "echo '# The bridge interface' | sudo tee -a /etc/network/interfaces; " \
-            "echo 'auto br0' | sudo tee -a /etc/network/interfaces; " \
-            "echo 'iface br0 inet static' | sudo tee -a /etc/network/interfaces; " \
-            "echo '    address %s%s' | sudo tee -a /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix'], vm_id) + \
-            "echo '    netmask 255.255.255.0' | sudo tee -a /etc/network/interfaces; " \
-            "echo '    network %s0' | sudo tee -a /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix']) + \
-            "echo '    broadcast %s255' | sudo tee -a /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix']) + \
-            "echo '    gateway %s1' | sudo tee -a /etc/network/interfaces; " \
-            % (fab.env['vm']['prefix']) + \
-            "echo '    dns-nameservers 128.112.136.10' | sudo tee -a /etc/network/interfaces; " \
-            "echo '    bridge_ports eth0' | sudo tee -a /etc/network/interfaces; " \
-            "echo '    bridge_stp off' | sudo tee -a /etc/network/interfaces; " \
-            "sync; sudo reboot; "
-    pve.vm_parallel_run(scripts)
-    for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
-        vm_id = faban_client['vm_id']
-        pve.vm_is_ready(vm_id)
-
-
-@fab.roles('server')
 def setup():
-    pve.vm_generate_multi(fab.env['web_serving_lb']['vm']['base_id'], "web-serving-lb", True, setup_scripts(),
+    pve.vm_generate_multi(fab.env['web_serving_lb']['vm']['base_id'], "web-serving-lb", False, setup_scripts(),
                           *vm_id_list)
-    post_setup_scripts()
 
 
 @fab.roles('server')
@@ -113,10 +70,13 @@ def configure_mysql_servers():
     scripts = dict()
     for mysql_server in fab.env['web_serving_lb']['servers']['mysql_server']:
         vm_id = mysql_server['vm_id']
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
         lb_server_vm_id = fab.env['web_serving_lb']['servers']['lb_server'][mysql_server['lb_server']]['vm_id']
-        scripts[vm_id] = \
+        scripts[vm_id] += \
             "sudo docker run -dt --net host --name mysql_server_%s cloudsuite/web-serving:db_server %s%s; " \
-            % (vm_id, fab.env['vm']['prefix'], lb_server_vm_id)
+            % (vm_id, fab.env['web_serving_lb']['vm']['prefix_1'], lb_server_vm_id)
     pve.vm_parallel_run(scripts)
 
 
@@ -125,7 +85,10 @@ def configure_memcache_servers():
     scripts = dict()
     for memcache_server in fab.env['web_serving_lb']['servers']['memcache_server']:
         vm_id = memcache_server['vm_id']
-        scripts[vm_id] = \
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
+        scripts[vm_id] += \
             "sudo docker run -dt --net=host --name=memcache_server_%s cloudsuite/web-serving:memcached_server; " \
             % (vm_id,)
     pve.vm_parallel_run(scripts)
@@ -136,11 +99,14 @@ def configure_web_servers():
     scripts = dict()
     for web_server in fab.env['web_serving_lb']['servers']['web_server']:
         vm_id = web_server['vm_id']
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
         pm_max_childs = web_server['pm_max_childs']
         mysql_server_vm_id = fab.env['web_serving_lb']['servers']['mysql_server'][web_server['mysql_server']]['vm_id']
         memcache_server_vm_id = \
             fab.env['web_serving_lb']['servers']['memcache_server'][web_server['memcache_server']]['vm_id']
-        scripts[vm_id] = \
+        scripts[vm_id] += \
             "sudo docker run -dt --net=host --name=web_server_%s cloudsuite/web-serving:web_server " \
             "/etc/bootstrap.sh mysql_server_%s memcache_server_%s %s; " \
             % (vm_id, mysql_server_vm_id, memcache_server_vm_id, pm_max_childs)
@@ -152,16 +118,22 @@ def configure_faban_clients():
     scripts = dict()
     for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
         vm_id = faban_client['vm_id']
+        scripts[vm_id] = "sudo ovs-vsctl add-br br1; " \
+                         "sudo ovs-vsctl add-port br1 eth1; " \
+                         "sudo ip addr add %s%s/24 dev br1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
         steady_state = faban_client['steady_state']
-        script = ""
         for client_id in faban_client['clients']:
-            script += "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash " \
-                      "cloudsuite/web-serving:faban_client; " % (client_id,)
-            script += "sudo pipework br0 -i eth0 faban_client_%s %s%s/24@%s1; " \
-                      % (client_id, fab.env['vm']['prefix'], client_id, fab.env['vm']['prefix'])
-            script += "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
-                      "/etc/bootstrap.sh; " % (client_id, steady_state)
-        scripts[vm_id] = script
+            scripts[vm_id] += \
+                "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash " \
+                "cloudsuite/web-serving:faban_client; " % (client_id,)
+            scripts[vm_id] += "sudo pipework br1 -i eth0 faban_client_%s %s%s/24@%s1; " \
+                              % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], client_id,
+                                 fab.env['web_serving_lb']['vm']['prefix_1'])
+            scripts[vm_id] += \
+                "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
+                "/etc/bootstrap.sh; " % (client_id, steady_state)
     pve.vm_parallel_run(scripts)
 
 
@@ -170,20 +142,23 @@ def configure_lb_servers():
     scripts = dict()
     for lb_server in fab.env['web_serving_lb']['servers']['lb_server']:
         vm_id = lb_server['vm_id']
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
         policy = lb_server['policy']
-        scripts[vm_id] = \
+        scripts[vm_id] += \
             "sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/haproxy; " \
             "echo 'frontend web-serving' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo '    bind %s%s:8080' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo '    default_backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo 'backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo '    balance %s' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
-            % (fab.env['vm']['prefix'], vm_id, policy)
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id, policy)
         for web_server_id in lb_server['web_servers']:
             web_server_vm_id = fab.env['web_serving_lb']['servers']['web_server'][web_server_id]['vm_id']
             scripts[vm_id] += \
                 "echo '    server web_server_%s %s%s:8080' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
-                % (web_server_vm_id, fab.env['vm']['prefix'], web_server_vm_id)
+                % (web_server_vm_id, fab.env['web_serving_lb']['vm']['prefix_1'], web_server_vm_id)
         scripts[vm_id] += "sudo service haproxy stop; " \
                           "sudo service haproxy start; "
     pve.vm_parallel_run(scripts)
@@ -230,7 +205,7 @@ def faban_client_run():
         for client_id in faban_client['clients']:
             scripts[vm_id].append(
                 "sudo docker exec faban_client_%s /etc/bootstrap.sh %s%s %s > %s"
-                % (client_id, fab.env['vm']['prefix'], lb_server_vm_id, load_scale,
+                % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], lb_server_vm_id, load_scale,
                    "faban_client_%s.log" % (client_id,)))
             client_ids.append(client_id)
     pve.vm_parallel_run(scripts, True)
@@ -281,6 +256,10 @@ def clear_mysql_servers():
         vm_id = mysql_server['vm_id']
         scripts[vm_id] = "sudo docker stop mysql_server_%s; " \
                          "sudo docker rm mysql_server_%s; " % (vm_id, vm_id)
+        scripts[vm_id] += \
+            "sudo ip addr del %s%s/24 dev eth1; " \
+            "sudo ip link set eth1 down; " \
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
     pve.vm_parallel_run(scripts)
 
 
@@ -291,6 +270,10 @@ def clear_memcache_servers():
         vm_id = memcache_server['vm_id']
         scripts[vm_id] = "sudo docker stop memcache_server_%s; " \
                          "sudo docker rm memcache_server_%s; " % (vm_id, vm_id)
+        scripts[vm_id] += \
+            "sudo ip addr del %s%s/24 dev eth1; " \
+            "sudo ip link set eth1 down; " \
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
     pve.vm_parallel_run(scripts)
 
 
@@ -301,6 +284,10 @@ def clear_web_servers():
         vm_id = web_server['vm_id']
         scripts[vm_id] = "sudo docker stop web_server_%s;" \
                          "sudo docker rm web_server_%s; " % (vm_id, vm_id)
+        scripts[vm_id] += \
+            "sudo ip addr del %s%s/24 dev eth1; " \
+            "sudo ip link set eth1 down; " \
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
     pve.vm_parallel_run(scripts)
 
 
@@ -309,12 +296,13 @@ def clear_faban_clients():
     scripts = dict()
     for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
         vm_id = faban_client['vm_id']
-        script = ""
+        scripts[vm_id] = ""
         for client_id in faban_client['clients']:
-            script += "sudo docker stop faban_client_%s; " \
-                      "sudo docker rm faban_client_%s; " \
-                      % (client_id, client_id)
-        scripts[vm_id] = script
+            scripts[vm_id] += "sudo docker stop faban_client_%s; " \
+                              "sudo docker rm faban_client_%s; " \
+                              % (client_id, client_id)
+        scripts[vm_id] += "sudo ovs-vsctl del-br br1; " \
+                          "sudo ip link set eth1 down; "
     pve.vm_parallel_run(scripts)
 
 
@@ -330,13 +318,16 @@ def clear_lb_servers():
             "sudo sed --in-place '/default_backend web-serving-backend/d' /etc/haproxy/haproxy.cfg; " \
             "sudo sed --in-place '/backend web-serving-backend/d' /etc/haproxy/haproxy.cfg;" \
             "sudo sed --in-place '/balance %s/d' /etc/haproxy/haproxy.cfg; " \
-            % (fab.env['vm']['prefix'], vm_id, policy)
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id, policy)
         for web_server_id in lb_server['web_servers']:
             web_server_vm_id = fab.env['web_serving_lb']['servers']['web_server'][web_server_id]['vm_id']
             scripts[vm_id] += \
                 "sudo sed --in-place '/server web_server_%s %s%s:8080/d' /etc/haproxy/haproxy.cfg; " \
-                % (web_server_vm_id, fab.env['vm']['prefix'], web_server_vm_id)
+                % (web_server_vm_id, fab.env['web_serving_lb']['vm']['prefix_1'], web_server_vm_id)
         scripts[vm_id] += "sudo service haproxy stop; "
+        scripts[vm_id] += "sudo ip addr del %s%s/24 dev eth1; " \
+                          "sudo ip link set eth1 down; " \
+                          % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
     pve.vm_parallel_run(scripts)
 
 
@@ -358,7 +349,6 @@ def clear():
     proc_web.join()
     proc_fc.join()
     proc_lb.join()
-
 
 # The main functions are:
 # 1. setup/cleanup
