@@ -44,11 +44,11 @@ def setup_scripts():
         "curl https://raw.githubusercontent.com/jpetazzo/pipework/master/pipework > pipework; " \
         "sudo mv pipework /usr/local/bin/; " \
         "sudo chmod a+x /usr/local/bin/pipework; " \
-        "sudo apt-get -y install haproxy arping openvswitch-switch openvswitch-common; "
-    # Add hosts
-    for server_name, server_vm_id in server_vm_id_map.iteritems():
-        script += "echo %s%s %s | sudo tee -a /etc/hosts; " \
-                  % (fab.env['web_serving_lb']['vm']['prefix_1'], server_vm_id, server_name)
+        "sudo apt-get -y install haproxy arping bridge-utils openvswitch-switch openvswitch-common; "
+    # # Add hosts
+    # for server_name, server_vm_id in server_vm_id_map.iteritems():
+    #     script += "echo %s%s %s | sudo tee -a /etc/hosts; " \
+    #               % (fab.env['web_serving_lb']['vm']['prefix_1'], server_vm_id, server_name)
     scripts.append("echo '%s' > ~/setup_script.sh; " % (script,))
     scripts.append("sh ~/setup_script.sh; ")
     return scripts
@@ -108,8 +108,11 @@ def configure_web_servers():
             fab.env['web_serving_lb']['servers']['memcache_server'][web_server['memcache_server']]['vm_id']
         scripts[vm_id] += \
             "sudo docker run -dt --net=host --name=web_server_%s cloudsuite/web-serving:web_server " \
-            "/etc/bootstrap.sh mysql_server_%s memcache_server_%s %s; " \
-            % (vm_id, mysql_server_vm_id, memcache_server_vm_id, pm_max_childs)
+            "/etc/bootstrap.sh %s%s %s%s %s; " \
+            % (vm_id,
+               fab.env['web_serving_lb']['vm']['prefix_1'], mysql_server_vm_id,
+               fab.env['web_serving_lb']['vm']['prefix_1'], memcache_server_vm_id,
+               pm_max_childs)
     pve.vm_parallel_run(scripts)
 
 
@@ -118,22 +121,24 @@ def configure_faban_clients():
     scripts = dict()
     for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
         vm_id = faban_client['vm_id']
-        scripts[vm_id] = "sudo ovs-vsctl add-br br1; " \
-                         "sudo ovs-vsctl add-port br1 eth1; " \
+        scripts[vm_id] = "sudo brctl addbr br1; " \
+                         "sudo brctl stp br1 off; " \
+                         "sudo brctl addif br1 eth1; " \
                          "sudo ip addr add %s%s/24 dev br1; " \
+                         "sudo ip link set br1 up; " \
                          "sudo ip link set eth1 up; " \
                          % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
-        steady_state = faban_client['steady_state']
-        for client_id in faban_client['clients']:
-            scripts[vm_id] += \
-                "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash " \
-                "cloudsuite/web-serving:faban_client; " % (client_id,)
-            scripts[vm_id] += "sudo pipework br1 -i eth0 faban_client_%s %s%s/24@%s1; " \
-                              % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], client_id,
-                                 fab.env['web_serving_lb']['vm']['prefix_1'])
-            scripts[vm_id] += \
-                "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
-                "/etc/bootstrap.sh; " % (client_id, steady_state)
+        # steady_state = faban_client['steady_state']
+        # for client_id in faban_client['clients']:
+        #     scripts[vm_id] += \
+        #         "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash " \
+        #         "cloudsuite/web-serving:faban_client; " % (client_id,)
+        #     scripts[vm_id] += "sudo pipework br1 -i eth0 faban_client_%s %s%s/24@%s1; " \
+        #                       % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], client_id,
+        #                          fab.env['web_serving_lb']['vm']['prefix_1'])
+        #     scripts[vm_id] += \
+        #         "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
+        #         "/etc/bootstrap.sh; " % (client_id, steady_state)
     pve.vm_parallel_run(scripts)
 
 
@@ -301,8 +306,11 @@ def clear_faban_clients():
             scripts[vm_id] += "sudo docker stop faban_client_%s; " \
                               "sudo docker rm faban_client_%s; " \
                               % (client_id, client_id)
-        scripts[vm_id] += "sudo ovs-vsctl del-br br1; " \
-                          "sudo ip link set eth1 down; "
+        scripts[vm_id] += "sudo ip link set eth1 down; " \
+                          "sudo ip link set br1 down; " \
+                          "sudo ip addr del 11.11.11.112/24 dev br1; " \
+                          "sudo brctl delif br1 eth1; " \
+                          "sudo brctl delbr br1; "
     pve.vm_parallel_run(scripts)
 
 
@@ -339,15 +347,15 @@ def clear():
     proc_memcache.start()
     proc_web = Process(target=clear_web_servers)
     proc_web.start()
-    proc_fc = Process(target=clear_faban_clients)
-    proc_fc.start()
+    proc_faban = Process(target=clear_faban_clients)
+    proc_faban.start()
     proc_lb = Process(target=clear_lb_servers)
     proc_lb.start()
 
     proc_mysql.join()
     proc_memcache.join()
     proc_web.join()
-    proc_fc.join()
+    proc_faban.join()
     proc_lb.join()
 
 # The main functions are:

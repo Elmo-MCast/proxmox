@@ -146,38 +146,14 @@ def vm_start(vm_id):
         % (run("hostname"), vm_id))
 
 
-# def vm_start_multi(*vm_ids):
-#     for vm_id in vm_ids:
-#         vm_start(vm_id)
-
-
 def vm_stop(vm_id):
     run("pvesh create /nodes/%s/qemu/%s/status/stop"
         % (run("hostname"), vm_id))
 
 
-# def vm_stop_multi(*vm_ids):
-#     for vm_id in vm_ids:
-#         vm_stop(vm_id)
-
-
 def vm_delete(vm_id):
     run("pvesh delete /nodes/%s/qemu/%s"
         % (run("hostname"), vm_id))
-
-
-# def vm_delete_multi(*vm_ids):
-#     for vm_id in vm_ids:
-#         vm_delete(vm_id)
-
-
-# def vm_reboot(vm_id):
-#     vm_stop(vm_id)
-#     vm_start(vm_id)
-#
-#
-# def vm_sync(vm_id):
-#     vm_run(vm_id, 'sync')
 
 
 def vm_is_ready(vm_id):
@@ -190,29 +166,15 @@ def vm_is_ready(vm_id):
            env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id)))
 
 
-# Note: using sshpass instead of ssh keys.
-# def install_ssh_key_on_host(key_local_path):
-#     if "vm_ssh_key" in env:
-#         key_name = os.path.basename(env["vm_ssh_key"])
-#         key_path = os.path.dirname(env["vm_ssh_key"])
-#         start('mkdir -p ' + key_path)
-#         put(key_local_path+"/" + key_name, key_path)
-#         put(key_local_path + "/" + key_name + ".pub", key_path)
-#         start("chmod 600 " + env["vm_ssh_key"])
-#     else:
-#         abort("couldn't find 'vm_ssh_key' variable in env.")
-
-
-# def remove_ssh_key_on_host():
-#     if "vm_ssh_key" in env:
-#         key_path = os.path.dirname(env["vm_ssh_key"])
-#         start('rm -rf ' + key_path)
-#     else:
-#         abort("couldn't find 'vm_ssh_key' variable in env.")
-
-
 def host_configure():
     run('apt-get -y install sshpass parallel')
+
+
+def vm_configure_sudo_pwdless(vm_id):
+    vm_run(vm_id,
+           "echo %s | "
+           "sudo -S sed -i 's/sudo\\\tALL=(ALL:ALL) ALL/sudo\\\tALL=(ALL:ALL) NOPASSWD:ALL/g' /etc/sudoers"
+           % (env['vm']['password'],))
 
 
 def vm_configure(base_vm_id, vm_id):
@@ -227,16 +189,11 @@ def vm_configure(base_vm_id, vm_id):
               base_vm_id, vm_id))
 
 
-# Note: make sure that base VM is set with nopasswd for sudo.
-# def configure_vm_sudo_nopasswd(vm_id):
-#     vm_run(vm_id,
-#             "sudo sed -i 's/sudo\tALL=(ALL:ALL) ALL/sudo\tALL=(ALL:ALL) NOPASSWD:ALL/g' /etc/sudoers")
-
-
 def vm_generate(base_vm_id, vm_id, vm_name, full=False, command_scripts=None):
     vm_clone(base_vm_id, vm_id, vm_name, full)
     vm_start(vm_id)
     vm_is_ready(base_vm_id)
+    vm_configure_sudo_pwdless(base_vm_id)  # Note: this is necessary for running ssh commands on the VM
     vm_configure(base_vm_id, vm_id)
     vm_run(base_vm_id, "sync; sudo reboot; ")
     vm_is_ready(vm_id)
