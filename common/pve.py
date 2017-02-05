@@ -233,7 +233,7 @@ def vm_configure(base_vm_id, vm_id):
 #             "sudo sed -i 's/sudo\tALL=(ALL:ALL) ALL/sudo\tALL=(ALL:ALL) NOPASSWD:ALL/g' /etc/sudoers")
 
 
-def vm_generate(base_vm_id, vm_id, vm_name, full=False, command_scripts=list()):
+def vm_generate(base_vm_id, vm_id, vm_name, full=False, command_scripts=None):
     vm_clone(base_vm_id, vm_id, vm_name, full)
     vm_start(vm_id)
     vm_is_ready(base_vm_id)
@@ -248,7 +248,7 @@ def vm_generate(base_vm_id, vm_id, vm_name, full=False, command_scripts=list()):
         vm_is_ready(vm_id)
 
 
-def vm_generate_multi(base_vm_id, prefix, full=False, command_scripts=list(), *vm_ids):
+def vm_generate_multi(base_vm_id, prefix, full=False, command_scripts=None, *vm_ids):
     for vm_id in vm_ids:
         vm_generate(base_vm_id, vm_id, '%s-%s' % (prefix, vm_id), full)
 

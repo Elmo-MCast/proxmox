@@ -48,7 +48,7 @@ def setup_scripts():
 
 @fab.roles('client')
 def setup():
-    pve.vm_generate_multi(fab.env['httperf']['vm']['base_id'], "httperf-client", True, setup_scripts(),
+    pve.vm_generate_multi(fab.env['httperf']['vm']['base_id'], "httperf-client", False, setup_scripts(),
                           *fab.env['httperf']['vm']['clients'])
 
 
