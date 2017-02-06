@@ -1,6 +1,6 @@
 import re
 
-from web_serving.helpers import sample
+from helpers import sample
 
 
 def clean_results(log_file):

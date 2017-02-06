@@ -2,7 +2,7 @@ import fabric.api as fab
 from pebble import process
 
 from common import pve
-from web_serving import results
+from web_serving_lb import results
 
 # Settings
 

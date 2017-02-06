@@ -59,8 +59,8 @@
       "faban_client": [
         {
           "vm_id": 112,
-          "load_scale": 1,
-          "steady_state": 30,
+          "load_scale": 4,
+          "steady_state": 60,
           "lb_server": 0,
           "clients": [
             113
