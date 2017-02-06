@@ -41,10 +41,7 @@ def setup_scripts():
     script = \
         "sudo apt-get update; " \
         "curl -sSL https://get.docker.com/ | sh; " \
-        "curl https://raw.githubusercontent.com/jpetazzo/pipework/master/pipework > pipework; " \
-        "sudo mv pipework /usr/local/bin/; " \
-        "sudo chmod a+x /usr/local/bin/pipework; " \
-        "sudo apt-get -y install haproxy arping bridge-utils openvswitch-switch openvswitch-common; "
+        "sudo apt-get -y install haproxy bridge-utils; "
     # # Add hosts
     # for server_name, server_vm_id in server_vm_id_map.iteritems():
     #     script += "echo %s%s %s | sudo tee -a /etc/hosts; " \
@@ -121,24 +118,21 @@ def configure_faban_clients():
     scripts = dict()
     for faban_client in fab.env['web_serving_lb']['servers']['faban_client']:
         vm_id = faban_client['vm_id']
-        scripts[vm_id] = "sudo brctl addbr br1; " \
-                         "sudo brctl stp br1 off; " \
-                         "sudo brctl addif br1 eth1; " \
-                         "sudo ip addr add %s%s/24 dev br1; " \
-                         "sudo ip link set br1 up; " \
+        scripts[vm_id] = "sudo docker network create --driver bridge --subnet=%s0/24 --gateway=%s%s " \
+                         "--opt 'com.docker.network.bridge.name'='docker1' docker1; " \
+                         "sudo brctl addif docker1 eth1; " \
                          "sudo ip link set eth1 up; " \
-                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
-        # steady_state = faban_client['steady_state']
-        # for client_id in faban_client['clients']:
-        #     scripts[vm_id] += \
-        #         "sudo docker run -dt --net none --name faban_client_%s --entrypoint bash " \
-        #         "cloudsuite/web-serving:faban_client; " % (client_id,)
-        #     scripts[vm_id] += "sudo pipework br1 -i eth0 faban_client_%s %s%s/24@%s1; " \
-        #                       % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], client_id,
-        #                          fab.env['web_serving_lb']['vm']['prefix_1'])
-        #     scripts[vm_id] += \
-        #         "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
-        #         "/etc/bootstrap.sh; " % (client_id, steady_state)
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'],
+                            fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
+        steady_state = faban_client['steady_state']
+        for client_id in faban_client['clients']:
+            scripts[vm_id] += \
+                "sudo docker run -dt --net docker1 --ip %s%s --name faban_client_%s --entrypoint bash " \
+                "cloudsuite/web-serving:faban_client; " \
+                % (fab.env['web_serving_lb']['vm']['prefix_1'], client_id, client_id)
+            scripts[vm_id] += \
+                "sudo docker exec faban_client_%s sudo sed -i 's/<fa:steadyState>30/<fa:steadyState>%s/g' " \
+                "/etc/bootstrap.sh; " % (client_id, steady_state)
     pve.vm_parallel_run(scripts)
 
 
@@ -307,10 +301,8 @@ def clear_faban_clients():
                               "sudo docker rm faban_client_%s; " \
                               % (client_id, client_id)
         scripts[vm_id] += "sudo ip link set eth1 down; " \
-                          "sudo ip link set br1 down; " \
-                          "sudo ip addr del 11.11.11.112/24 dev br1; " \
-                          "sudo brctl delif br1 eth1; " \
-                          "sudo brctl delbr br1; "
+                          "sudo brctl delif docker1 eth1; " \
+                          "sudo docker network rm docker1; "
     pve.vm_parallel_run(scripts)
 
 
