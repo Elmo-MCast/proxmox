@@ -207,7 +207,7 @@ def faban_client_run():
                 % (client_id, fab.env['web_serving_lb']['vm']['prefix_1'], lb_server_vm_id, load_scale,
                    "faban_client_%s.log" % (client_id,)))
             client_ids.append(client_id)
-    pve.vm_parallel_run(scripts, True)
+    pve.vm_parallel_run(scripts)
     return client_ids
 
 
@@ -244,8 +244,9 @@ def print_results(client_ids):
 @fab.roles('server')
 def start():
     pre_faban_client_run()
-    print_results(faban_client_run())
+    client_ids = faban_client_run()
     post_faban_client_run()
+    print_results(client_ids)
 
 
 @fab.roles('server')

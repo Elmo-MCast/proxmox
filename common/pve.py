@@ -97,7 +97,7 @@ def host_parallel_get(commands, display_only=False):
         script = "parallel :::"
         for command in commands:
             script += " \\\n"
-            script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s:%s %s" \
+            script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s:%s %s'" \
                       % (env.password, env.host_string, command['src'], command['dst'])
 
         if display_only:
@@ -115,12 +115,12 @@ def vm_parallel_get(commands, display_only=False):
             if isinstance(commands[vm_id], list):
                 for command in commands[vm_id]:
                     script += " \\\n"
-                    script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s" \
+                    script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s'" \
                               % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                                  vm_id, command['src'], command['dst'])
             else:
                 script += " \\\n"
-                script += "sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s" \
+                script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s'" \
                           % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                              vm_id, commands[vm_id]['src'], commands[vm_id]['dst'])
 
