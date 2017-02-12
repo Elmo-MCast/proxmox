@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 import fabric.api as fab
 
-from common import pve
+from pve import pve
 from helpers import results
 
 """ Configurations """
