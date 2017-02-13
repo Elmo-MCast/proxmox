@@ -42,7 +42,8 @@ def setup_scripts():
     script = \
         "sudo apt-get update; " \
         "curl -sSL https://get.docker.com/ | sh; " \
-        "sudo apt-get -y install haproxy bridge-utils; "
+        "sudo apt-get -y install haproxy bridge-utils python-memcache; " \
+        "git clone https://github.com/mshahbaz/haproxy-dynamic-weight.git; "
     # # Add hosts
     # for server_name, server_vm_id in server_vm_id_map.iteritems():
     #     script += "echo %s%s %s | sudo tee -a /etc/hosts; " \
@@ -111,6 +112,16 @@ def configure_web_servers():
                fab.env['web_serving_lb']['vm']['prefix_1'], mysql_server_vm_id,
                fab.env['web_serving_lb']['vm']['prefix_1'], memcache_server_vm_id,
                pm_max_childs)
+        scripts[vm_id] += "sudo sed -i 's/_HOSTNAME_/web_server_%s/g' ~/haproxy-dynamic-weight/request-lb-weight.py; " \
+                          % (vm_id,)
+        state_server_vm_id = fab.env['web_serving_lb']['servers']['state_server'][
+            web_server['state_server']['id']]['vm_id']
+        state_server_timeout = web_server['state_server']['timeout']
+        state_server_max_load = web_server['state_server']['max_load']
+        scripts[vm_id] += "nohup python ~/haproxy-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s " \
+                          "> /dev/null 2> /dev/null < /dev/null & " \
+                          % (fab.env['web_serving_lb']['vm']['prefix_1'], state_server_vm_id,
+                             state_server_timeout, state_server_max_load)
     pve.vm_parallel_run(scripts)
 
 
@@ -138,6 +149,20 @@ def configure_faban_clients():
 
 
 @fab.roles('server')
+def configure_state_servers():
+    scripts = dict()
+    for state_server in fab.env['web_serving_lb']['servers']['state_server']:
+        vm_id = state_server['vm_id']
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
+        scripts[vm_id] += \
+            "sudo docker run --network=host --name state_server_%s -d memcached; " \
+            % (vm_id,)
+    pve.vm_parallel_run(scripts)
+
+
+@fab.roles('server')
 def configure_lb_servers():
     scripts = dict()
     for lb_server in fab.env['web_serving_lb']['servers']['lb_server']:
@@ -148,6 +173,7 @@ def configure_lb_servers():
         policy = lb_server['policy']
         scripts[vm_id] += \
             "sudo sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/haproxy; " \
+            "sudo sed -i '8istats socket /var/run/haproxy.sock mode 666 level admin' /etc/haproxy/haproxy.cfg; " \
             "echo 'frontend web-serving' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo '    bind %s%s:8080' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
             "echo '    default_backend web-serving-backend' | sudo tee -a /etc/haproxy/haproxy.cfg; " \
@@ -161,6 +187,14 @@ def configure_lb_servers():
                 % (web_server_vm_id, fab.env['web_serving_lb']['vm']['prefix_1'], web_server_vm_id)
         scripts[vm_id] += "sudo service haproxy stop; " \
                           "sudo service haproxy start; "
+        state_server_vm_id = fab.env['web_serving_lb']['servers']['state_server'][
+            lb_server['state_server']['id']]['vm_id']
+        state_server_timeout = lb_server['state_server']['timeout']
+        scripts[vm_id] += "sudo sed -i 's/\/etc\/haproxy\/haproxy.sock/\/var\/run\/haproxy.sock/g' " \
+                          "~/haproxy-dynamic-weight/set-lb-weight.py; " \
+                          "nohup python ~/haproxy-dynamic-weight/set-lb-weight.py %s%s:11211 %s " \
+                          "> /dev/null 2> /dev/null < /dev/null & " \
+                          % (fab.env['web_serving_lb']['vm']['prefix_1'], state_server_vm_id, state_server_timeout)
     pve.vm_parallel_run(scripts)
 
 
@@ -176,12 +210,15 @@ def configure():
     proc_faban.start()
     proc_lb = Process(target=configure_lb_servers)
     proc_lb.start()
+    proc_state = Process(target=configure_state_servers)
+    proc_state.start()
 
     proc_mysql.join()
     proc_memcache.join()
     proc_web.join()
     proc_faban.join()
     proc_lb.join()
+    proc_state.join()
 
 
 @fab.roles('server')
@@ -283,8 +320,11 @@ def clear_web_servers():
     scripts = dict()
     for web_server in fab.env['web_serving_lb']['servers']['web_server']:
         vm_id = web_server['vm_id']
-        scripts[vm_id] = "sudo docker stop web_server_%s;" \
-                         "sudo docker rm web_server_%s; " % (vm_id, vm_id)
+        scripts[vm_id] = "skill python; " \
+                         "sudo sed -i 's/web_server_%s/_HOSTNAME_/g' ~/haproxy-dynamic-weight/request-lb-weight.py; " \
+                          % (vm_id,)
+        scripts[vm_id] += "sudo docker stop web_server_%s;" \
+                          "sudo docker rm web_server_%s; " % (vm_id, vm_id)
         scripts[vm_id] += \
             "sudo ip addr del %s%s/24 dev eth1; " \
             "sudo ip link set eth1 down; " \
@@ -309,12 +349,29 @@ def clear_faban_clients():
 
 
 @fab.roles('server')
+def clear_state_servers():
+    scripts = dict()
+    for state_server in fab.env['web_serving_lb']['servers']['state_server']:
+        vm_id = state_server['vm_id']
+        scripts[vm_id] = "sudo docker stop state_server_%s; " \
+                         "sudo docker rm state_server_%s; " % (vm_id, vm_id)
+        scripts[vm_id] += \
+            "sudo ip addr del %s%s/24 dev eth1; " \
+            "sudo ip link set eth1 down; " \
+            % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
+    pve.vm_parallel_run(scripts)
+
+
+@fab.roles('server')
 def clear_lb_servers():
     scripts = dict()
     for lb_server in fab.env['web_serving_lb']['servers']['lb_server']:
         vm_id = lb_server['vm_id']
         policy = lb_server['policy']
-        scripts[vm_id] = \
+        scripts[vm_id] = "skill python; "
+        scripts[vm_id] += \
+            "sudo sed --in-place '/stats socket \/var\/run\/haproxy.sock mode 666 level admin/d' " \
+            "/etc/haproxy/haproxy.cfg; " \
             "sudo sed --in-place '/frontend web-serving/d' /etc/haproxy/haproxy.cfg; " \
             "sudo sed --in-place '/bind %s%s:8080/d' /etc/haproxy/haproxy.cfg; " \
             "sudo sed --in-place '/default_backend web-serving-backend/d' /etc/haproxy/haproxy.cfg; " \
@@ -330,6 +387,9 @@ def clear_lb_servers():
         scripts[vm_id] += "sudo ip addr del %s%s/24 dev eth1; " \
                           "sudo ip link set eth1 down; " \
                           % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
+        scripts[vm_id] += "sudo sed -i 's/\/var\/run\/haproxy.sock/\/etc\/haproxy\/haproxy.sock/g' " \
+                          "~/haproxy-dynamic-weight/set-lb-weight.py; " \
+                          "sudo rm -f /var/run/haproxy.sock"
     pve.vm_parallel_run(scripts)
 
 
@@ -345,12 +405,15 @@ def clear():
     proc_faban.start()
     proc_lb = Process(target=clear_lb_servers)
     proc_lb.start()
+    proc_state = Process(target=clear_state_servers)
+    proc_state.start()
 
     proc_mysql.join()
     proc_memcache.join()
     proc_web.join()
     proc_faban.join()
     proc_lb.join()
+    proc_state.join()
 
 # The main functions are:
 # 1. setup/cleanup

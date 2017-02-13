@@ -151,6 +151,10 @@ def vm_stop(vm_id):
         % (run("hostname"), vm_id))
 
 
+def vm_reboot(vm_id):
+    vm_run(vm_id, "sync; sudo reboot; ")
+
+
 def vm_delete(vm_id):
     run("pvesh delete /nodes/%s/qemu/%s"
         % (run("hostname"), vm_id))

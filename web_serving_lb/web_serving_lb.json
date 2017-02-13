@@ -44,36 +44,50 @@
           "vm_id": 112,
           "pm_max_childs": 80,
           "mysql_server": 0,
-          "memcache_server": 0
+          "memcache_server": 0,
+          "state_server": {
+            "id": 0,
+            "timeout": 0.05,
+            "max_load": 5
+          }
+        }
+      ],
+      "state_server": [
+        {
+          "vm_id": 113
         }
       ],
       "lb_server": [
         {
-          "vm_id": 113,
+          "vm_id": 114,
           "web_servers": [
             0
           ],
-          "policy": "roundrobin"
+          "policy": "roundrobin",
+          "state_server": {
+            "id": 0,
+            "timeout": 0.05
+          }
         }
       ],
       "faban_client": [
         {
-          "vm_id": 114,
+          "vm_id": 115,
           "load_scale": 1,
-          "steady_state": 30,
+          "steady_state": 5,
           "lb_server": 0,
           "clients": [
-            115,
-            116
+            116,
+            117
           ]
         },
         {
-          "vm_id": 117,
+          "vm_id": 118,
           "load_scale": 1,
-          "steady_state": 30,
+          "steady_state": 5,
           "lb_server": 0,
           "clients": [
-            118
+            119
           ]
         }
       ]
