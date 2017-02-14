@@ -1,0 +1,77 @@
+{
+  "env": {
+    "warn_only": true,
+    "hosts": [
+      "root@128.112.168.27",
+      "root@128.112.168.28"
+    ],
+    "roledefs": {
+      "server": [
+        "root@128.112.168.27"
+      ],
+      "analyst": [
+        "root@128.112.168.28"
+      ]
+    },
+    "user": "root",
+    "password": "PrincetonP4OVS",
+    "vm": {
+      "prefix": "10.10.10.",
+      "user": "mshahbaz",
+      "password": "nopass"
+    },
+    "analyst": {
+      "path": "/root/mshahbaz/notebooks/baseerat/runs"
+    }
+  },
+  "httperf_lb": {
+    "vm": {
+      "base_id": 103,
+      "prefix_1": "11.11.11.",
+      "@Shahbaz": "prefix_1 requires that a second bridge 'vmbr1' is setup on the proxmox host."
+    },
+    "servers": {
+      "web_server": [
+        {
+          "vm_id": 112,
+          "state_server": {
+            "id": 0,
+            "timeout": 0.05,
+            "max_load": 5
+          }
+        }
+      ],
+      "state_server": [
+        {
+          "vm_id": 114
+        }
+      ],
+      "lb_server": [
+        {
+          "vm_id": 114,
+          "web_servers": [
+            0
+          ],
+          "policy": "roundrobin",
+          "state_server": {
+            "id": 0,
+            "timeout": 0.05
+          }
+        }
+      ],
+      "httperf_client": [
+        {
+          "vm_id": 115,
+          "port": 80,
+          "num-conns": 100,
+          "num-calls": 1,
+          "rate": 50,
+          "ramp": 1,
+          "iters": 1,
+          "timeout": 1,
+          "lb_server": 0
+        }
+      ]
+    }
+  }
+}
