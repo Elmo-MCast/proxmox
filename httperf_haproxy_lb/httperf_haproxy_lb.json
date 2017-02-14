@@ -24,7 +24,7 @@
       "path": "/root/mshahbaz/notebooks/baseerat/runs"
     }
   },
-  "httperf_lb": {
+  "httperf_haproxy_lb": {
     "vm": {
       "base_id": 103,
       "prefix_1": "11.11.11.",
@@ -59,18 +59,58 @@
           }
         }
       ],
-      "httperf_client": [
-        {
-          "vm_id": 115,
-          "num-conns": 100,
+      "httperf_client": {
+        "config": {
+          "num-conns": 1000,
           "num-calls": 1,
-          "rate": 50,
-          "ramp": 1,
-          "iters": 1,
-          "timeout": 1,
-          "lb_server": 0
-        }
-      ]
+          "rate": 20,
+          "ramp": 20,
+          "iters": 10,
+          "timeout": 10
+        },
+        "vms": [
+          {
+            "vm_id": 115,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 116,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 117,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 118,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 119,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 120,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 121,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 122,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 123,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 124,
+            "lb_server": 0
+          }
+        ]
+      }
     }
   }
 }
