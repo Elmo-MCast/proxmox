@@ -38,7 +38,6 @@ vm_id_list = list(vm_id_set)
 @fab.roles('server')
 def setup_scripts():
     scripts = list()
-    # Install common apps
     script = \
         "sudo apt-get update; " \
         "curl -sSL https://get.docker.com/ | sh; " \
@@ -389,7 +388,7 @@ def clear_lb_servers():
                           % (fab.env['web_serving_lb']['vm']['prefix_1'], vm_id)
         scripts[vm_id] += "sudo sed -i 's/\/var\/run\/haproxy.sock/\/etc\/haproxy\/haproxy.sock/g' " \
                           "~/haproxy-dynamic-weight/set-lb-weight.py; " \
-                          "sudo rm -f /var/run/haproxy.sock"
+                          "sudo rm -f /var/run/haproxy.sock; "
     pve.vm_parallel_run(scripts)
 
 

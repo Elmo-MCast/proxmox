@@ -62,7 +62,6 @@
       "httperf_client": [
         {
           "vm_id": 115,
-          "port": 80,
           "num-conns": 100,
           "num-calls": 1,
           "rate": 50,
