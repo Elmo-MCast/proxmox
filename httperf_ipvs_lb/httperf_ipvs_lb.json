@@ -24,44 +24,45 @@
       "path": "/root/mshahbaz/notebooks/baseerat/runs"
     }
   },
-  "httperf_haproxy_lb": {
+  "httperf_ipvs_lb": {
     "vm": {
       "base_id": 103,
       "prefix_1": "11.11.11.",
       "@Shahbaz": "prefix_1 requires that a second bridge 'vmbr1' is setup on the proxmox host."
     },
+    "vip": {
+      "prefix": "172.16."
+    },
     "servers": {
       "web_server": [
         {
           "vm_id": 112,
+          "lb_server": 0,
           "state_server": {
             "id": 0,
             "timeout": 0.05,
             "max_load": 5
+          },
+          "webpage": {
+            "cgi": {
+              "enable": false,
+              "loop-count": 1
+            }
           }
         },
         {
           "vm_id": 113,
+          "lb_server": 0,
           "state_server": {
             "id": 0,
             "timeout": 0.05,
             "max_load": 5
-          }
-        },
-        {
-          "vm_id": 114,
-          "state_server": {
-            "id": 0,
-            "timeout": 0.05,
-            "max_load": 5
-          }
-        },
-        {
-          "vm_id": 115,
-          "state_server": {
-            "id": 0,
-            "timeout": 0.05,
-            "max_load": 5
+          },
+          "webpage": {
+            "cgi": {
+              "enable": true,
+              "loop-count": 1
+            }
           }
         }
       ],
@@ -75,14 +76,13 @@
           "vm_id": 116,
           "web_servers": [
             0,
-            1,
-            2,
-            3
+            1
           ],
-          "policy": "roundrobin",
+          "policy": "rr",
           "state_server": {
             "id": 0,
-            "timeout": 0.05
+            "timeout": 0.05,
+            "enable": false
           }
         }
       ],
@@ -90,7 +90,7 @@
         "config": {
           "num-conns": 1000,
           "num-calls": 1,
-          "rate": 100,
+          "rate": 20,
           "ramp": 10,
           "iters": 10,
           "timeout": 10
@@ -102,38 +102,6 @@
           },
           {
             "vm_id": 121,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 122,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 123,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 124,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 125,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 126,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 127,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 128,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 129,
             "lb_server": 0
           }
         ]
