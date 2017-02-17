@@ -50,7 +50,13 @@ def setup_scripts():
         "git clone https://github.com/mshahbaz/httperf.git; " \
         "git clone https://github.com/mshahbaz/httperf-plot.git; " \
         "git clone https://github.com/mshahbaz/ipvs-dynamic-weight.git; " \
-        "cd ~/httperf; autoreconf -i; ./configure; make; sudo make install; cd ~/; "
+        "cd ~/httperf; autoreconf -i; ./configure; make; sudo make install; cd ~/; " \
+        "echo 'mshahbaz    hard    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'mshahbaz    soft    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'root        hard    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'root        soft    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'fs.file-max = 2097152' | sudo tee -a /etc/sysctl.conf; " \
+        "sudo sysctl -p; "
     scripts.append("echo '%s' > ~/setup_script.sh; " % (script,))
     scripts.append("sh ~/setup_script.sh; ")
     return scripts
@@ -129,17 +135,18 @@ def configure_web_servers():
 
 @fab.roles('server')
 def configure_state_servers():
-    scripts = dict()
-    for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
-        vm_id = state_server['vm_id']
-        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
-                         "sudo ip link set eth1 up; " \
-                         % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
-        scripts[vm_id] += \
-            "sudo service docker start; " \
-            "sudo docker run --network=host --name state_server_%s -d memcached; " \
-            % (vm_id,)
-    pve.vm_parallel_run(scripts)
+    if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+        scripts = dict()
+        for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
+            vm_id = state_server['vm_id']
+            scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                             "sudo ip link set eth1 up; " \
+                             % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
+            scripts[vm_id] += \
+                "sudo service docker start; " \
+                "sudo docker run --network=host --name state_server_%s -d memcached; " \
+                % (vm_id,)
+        pve.vm_parallel_run(scripts)
 
 
 @fab.roles('server')
@@ -309,17 +316,18 @@ def clear_web_servers():
 
 @fab.roles('server')
 def clear_state_servers():
-    scripts = dict()
-    for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
-        vm_id = state_server['vm_id']
-        scripts[vm_id] = "sudo docker stop state_server_%s; " \
-                         "sudo docker rm state_server_%s; " \
-                         "sudo service docker stop; " % (vm_id, vm_id)
-        scripts[vm_id] += \
-            "sudo ip addr del %s%s/24 dev eth1; " \
-            "sudo ip link set eth1 down; " \
-            % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
-    pve.vm_parallel_run(scripts)
+    if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+        scripts = dict()
+        for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
+            vm_id = state_server['vm_id']
+            scripts[vm_id] = "sudo docker stop state_server_%s; " \
+                             "sudo docker rm state_server_%s; " \
+                             "sudo service docker stop; " % (vm_id, vm_id)
+            scripts[vm_id] += \
+                "sudo ip addr del %s%s/24 dev eth1; " \
+                "sudo ip link set eth1 down; " \
+                % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
+        pve.vm_parallel_run(scripts)
 
 
 @fab.roles('server')
