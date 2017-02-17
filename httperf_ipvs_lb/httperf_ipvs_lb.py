@@ -45,10 +45,11 @@ def setup_scripts():
     script = \
         "sudo apt-get update; " \
         "sudo apt-get -y install libtool autoconf build-essential git " \
-        "ipvsadm apache2 bridge-utils python-memcache python-matplotlib; " \
+        "ipvsadm apache2 bridge-utils python-memcache python-matplotlib python-psutil; " \
         "curl -sSL https://get.docker.com/ | sh; " \
         "git clone https://github.com/mshahbaz/httperf.git; " \
         "git clone https://github.com/mshahbaz/httperf-plot.git; " \
+        "git clone https://github.com/mshahbaz/ipvs-dynamic-weight.git; " \
         "cd ~/httperf; autoreconf -i; ./configure; make; sudo make install; cd ~/; "
     scripts.append("echo '%s' > ~/setup_script.sh; " % (script,))
     scripts.append("sh ~/setup_script.sh; ")
@@ -59,11 +60,11 @@ def setup_scripts():
 def setup():
     pve.vm_generate_multi(fab.env['httperf_ipvs_lb']['vm']['base_id'], "httperf-lb", False, setup_scripts(),
                           *vm_id_list)
-
     scripts = dict()
     for vm_id in vm_id_list:
         scripts[vm_id] = "sudo service docker stop; " \
-                         "sudo service apache2 stop; "
+                         "sudo service apache2 stop; " \
+                         "sudo mv /var/www/html/index.html /var/www/html/index.html.orig; "
     pve.vm_parallel_run(scripts)
 
 
@@ -84,16 +85,6 @@ def configure_web_servers():
                          "sudo iptables -t nat -A PREROUTING -d %s%s.%s -j REDIRECT; " \
                          % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id,
                             vip_prefix, lb_server_vm_id, lb_server_vm_id)
-        # scripts[vm_id] += "sudo sed -i 's/_HOSTNAME_/web_server_%s/g' ~/haproxy-dynamic-weight/request-lb-weight.py; " \
-        #                   % (vm_id,)
-        # state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
-        #     web_server['state_server']['id']]['vm_id']
-        # state_server_timeout = web_server['state_server']['timeout']
-        # state_server_max_load = web_server['state_server']['max_load']
-        # scripts[vm_id] += "nohup python ~/haproxy-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s " \
-        #                   "> /dev/null 2> /dev/null < /dev/null & " \
-        #                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
-        #                      state_server_timeout, state_server_max_load)
         scripts[vm_id] += "sudo sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf; " \
                           "sudo sed -i 's/VirtualHost \*:80/VirtualHost \*:8080/g' " \
                           "/etc/apache2/sites-enabled/000-default.conf; "
@@ -109,13 +100,30 @@ def configure_web_servers():
                 "sudo a2enmod cgid; " \
                 % (vm_id, loop_count)
         else:
-            scripts[vm_id] += "sudo mv /var/www/html/index.html /var/www/html/index.html.orig; " \
-                              "sudo echo '<!doctype html><html><body><h1>(Backend:%s)</h1></body></html>' " \
+            scripts[vm_id] += "sudo echo '<!doctype html><html><body><h1>(Backend:%s)</h1></body></html>' " \
                               "| sudo tee -a /var/www/html/index.html; " \
                               % (vm_id)
         scripts[vm_id] += "sudo sync; " \
                           "sudo service apache2 start; "
-
+        if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+            scripts[vm_id] += "sudo sed -i 's/server_id = _SERVER_ID_/server_id = %s/g' " \
+                              "~/ipvs-dynamic-weight/request-lb-weight.py; " \
+                              % (vm_id,)
+            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
+                web_server['state_server']['id']]['vm_id']
+            state_server_timeout = web_server['state_server']['timeout']
+            state_server_metric = web_server['state_server']['metric']
+            if state_server_metric == 'cpu':
+                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s" \
+                                  "> /dev/null 2> /dev/null < /dev/null & " \
+                                  % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
+                                     state_server_timeout, "False", state_server_metric)
+            elif state_server_metric == 'loadavg':
+                state_server_max_load = web_server['state_server']['max_load']
+                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s %s" \
+                                  "> /dev/null 2> /dev/null < /dev/null & " \
+                                  % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
+                                     state_server_timeout, "False", state_server_metric, state_server_max_load)
     pve.vm_parallel_run(scripts)
 
 
@@ -153,19 +161,27 @@ def configure_lb_servers():
         policy = lb_server['policy']
         scripts[vm_id] += "sudo ipvsadm -A -t %s%s.%s:8080 -s %s; " \
                           % (vip_prefix, vm_id, vm_id, policy)
+        web_server_vm_ids = []
         for web_server_id in lb_server['web_servers']:
             web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server'][web_server_id]['vm_id']
             scripts[vm_id] += \
                 "sudo ipvsadm -a -t %s%s.%s:8080 -r %s%s:8080 -g; " \
                 % (vip_prefix, vm_id, vm_id, fab.env['httperf_ipvs_lb']['vm']['prefix_1'], web_server_vm_id)
-        # state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
-        #     lb_server['state_server']['id']]['vm_id']
-        # state_server_timeout = lb_server['state_server']['timeout']
-        # scripts[vm_id] += "sudo sed -i 's/\/etc\/haproxy\/haproxy.sock/\/var\/run\/haproxy.sock/g' " \
-        #                   "~/haproxy-dynamic-weight/set-lb-weight.py; " \
-        #                   "nohup python ~/haproxy-dynamic-weight/set-lb-weight.py %s%s:11211 %s " \
-        #                   "> /dev/null 2> /dev/null < /dev/null & " \
-        #                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id, state_server_timeout)
+            web_server_vm_ids.append(str(web_server_vm_id))
+        if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
+                lb_server['state_server']['id']]['vm_id']
+            state_server_timeout = lb_server['state_server']['timeout']
+            scripts[vm_id] += "sudo sed -i 's/server_ids = \[_SERVER_IDS_\]/server_ids = \[%s\]/g' " \
+                              "~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "sudo sed -i 's/XXX/%s%s.%s/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "sudo sed -i 's/YYY/%s/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "nohup python ~/ipvs-dynamic-weight/set-lb-weight.py %s%s:11211 %s " \
+                              "> /dev/null 2> /dev/null < /dev/null & " \
+                              % (", ".join(web_server_vm_ids),
+                                 vip_prefix, vm_id, vm_id,
+                                 fab.env['httperf_ipvs_lb']['vm']['prefix_1'],
+                                 fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id, state_server_timeout)
     pve.vm_parallel_run(scripts)
 
 
@@ -261,7 +277,13 @@ def clear_web_servers():
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
     for web_server in fab.env['httperf_ipvs_lb']['servers']['web_server']:
         vm_id = web_server['vm_id']
-        scripts[vm_id] = "sudo sed -i 's/Listen 8080/Listen 80/g' /etc/apache2/ports.conf; " \
+        scripts[vm_id] = ""
+        if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+            scripts[vm_id] += "skill python; " \
+                              "sudo sed -i 's/server_id = %s/server_id = _SERVER_ID_/g' " \
+                              "~/ipvs-dynamic-weight/request-lb-weight.py; " \
+                              % (vm_id,)
+        scripts[vm_id] += "sudo sed -i 's/Listen 8080/Listen 80/g' /etc/apache2/ports.conf; " \
                          "sudo sed -i 's/VirtualHost \*:8080/VirtualHost \*:80/g' " \
                          "/etc/apache2/sites-enabled/000-default.conf; "
         if web_server['webpage']['cgi']['enable']:
@@ -272,13 +294,9 @@ def clear_web_servers():
                 "/etc/apache2/mods-enabled/dir.conf;" \
                 "sudo a2dismod cgid; "
         else:
-            scripts[vm_id] += "sudo rm -f /var/www/html/index.html; " \
-                              "sudo mv /var/www/html/index.html.orig /var/www/html/index.html; "
+            scripts[vm_id] += "sudo rm -f /var/www/html/index.html; "
         scripts[vm_id] += "sudo sync; " \
                           "sudo service apache2 stop; "
-        # scripts[vm_id] += "skill python; " \
-        #                   "sudo sed -i 's/web_server_%s/_HOSTNAME_/g' ~/haproxy-dynamic-weight/request-lb-weight.py; " \
-        #                   % (vm_id,)
         lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server'][web_server['lb_server']]['vm_id']
         scripts[vm_id] += \
             "sudo iptables -t nat -D PREROUTING -d %s%s.%s -j REDIRECT; " \
@@ -307,13 +325,23 @@ def clear_state_servers():
 @fab.roles('server')
 def clear_lb_servers():
     scripts = dict()
+    vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
     for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']:
+        web_server_vm_ids = []
+        for web_server_id in lb_server['web_servers']:
+            web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server'][web_server_id]['vm_id']
+            web_server_vm_ids.append(str(web_server_vm_id))
         vm_id = lb_server['vm_id']
         scripts[vm_id] = ""
-        # scripts[vm_id] = "skill python; " \
-        #                  "sudo sed -i 's/\/var\/run\/haproxy.sock/\/etc\/haproxy\/haproxy.sock/g' " \
-        #                  "~/haproxy-dynamic-weight/set-lb-weight.py; " \
-        #                  "sudo rm -f /var/run/haproxy.sock; "
+        if fab.env['httperf_ipvs_lb']['feedback']['enable']:
+            scripts[vm_id] += "skill python; " \
+                             "sudo sed -i 's/server_ids = \[%s\]/server_ids = \[_SERVER_IDS_\]/g' " \
+                             "~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "sudo sed -i 's/%s%s.%s/XXX/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "sudo sed -i 's/%s/YYY/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              % (", ".join(web_server_vm_ids),
+                                 vip_prefix, vm_id, vm_id,
+                                 fab.env['httperf_ipvs_lb']['vm']['prefix_1'])
         scripts[vm_id] += "sudo ipvsadm -C; " \
                           "sudo ifconfig eth1:0 down; " \
                           "sudo service ipvsadm stop; "
