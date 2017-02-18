@@ -42,7 +42,7 @@ def local_parallel_run(commands, display_only=False):
         abort("incorrect args (should be a list of commands")
 
 
-def host_parallel_run(commands, display_only=False):
+def parallel_run(commands, display_only=False):
     if isinstance(commands, list):
         script = "parallel :::"
         for command in commands:
@@ -92,7 +92,7 @@ def vm_get(vm_id, src, dst, log_file=None):
                vm_id, src, dst))
 
 
-def host_parallel_get(commands, display_only=False):
+def parallel_get(commands, display_only=False):
     if isinstance(commands, list):
         script = "parallel :::"
         for command in commands:
@@ -155,6 +155,10 @@ def vm_reboot(vm_id):
     vm_run(vm_id, "sync; sudo reboot; ")
 
 
+def vm_parallel_reboot(vm_ids):
+    vm_parallel_run({vm_id: "sync; sudo reboot; " for vm_id in vm_ids})
+
+
 def vm_delete(vm_id):
     run("pvesh delete /nodes/%s/qemu/%s"
         % (run("hostname"), vm_id))
@@ -170,7 +174,7 @@ def vm_is_ready(vm_id):
            env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id)))
 
 
-def host_configure():
+def configure():
     run('apt-get -y install sshpass parallel')
 
 
@@ -199,13 +203,13 @@ def vm_generate(base_vm_id, vm_id, vm_name, full=False, command_scripts=None):
     vm_is_ready(base_vm_id)
     vm_configure_sudo_pwdless(base_vm_id)  # Note: this is necessary for running ssh commands on the VM
     vm_configure(base_vm_id, vm_id)
-    vm_run(base_vm_id, "sync; sudo reboot; ")
+    vm_reboot(base_vm_id)
     vm_is_ready(vm_id)
 
     if command_scripts:
         for command_script in command_scripts:
             vm_run(vm_id, command_script)
-        vm_run(vm_id, "sync; sudo reboot; ")
+        vm_reboot(vm_id)
         vm_is_ready(vm_id)
 
 
@@ -219,7 +223,7 @@ def vm_generate_multi(base_vm_id, prefix, full=False, command_scripts=None, *vm_
             for vm_id in vm_ids:
                 scripts[vm_id] = command_script
             vm_parallel_run(scripts)
-        vm_parallel_run({vm_id: "sync; sudo reboot; " for vm_id in vm_ids})
+        vm_parallel_reboot(vm_ids)
         for vm_id in vm_ids:
             vm_is_ready(vm_id)
 
@@ -232,6 +236,18 @@ def vm_destroy(vm_id):
 def vm_destroy_multi(*vm_ids):
     for vm_id in vm_ids:
         vm_destroy(vm_id)
+
+
+def vm_options(vm_id, option, value):
+    "Current options are: sockets, cores, memory"
+    run("pvesh set /nodes/%s/qemu/%s/config -%s %s"
+        % (run("hostname"), vm_id, option, value))
+
+
+def vm_options_multi(option, value, *vm_ids):
+    for vm_id in vm_ids:
+        vm_options(vm_id, option, value)
+
 
 # def vm_add_host(vm_id, host_vm_id, host_vm_name):
 #     vm_run(vm_id, "echo '%s%s %s' | sudo tee -a /etc/hosts"

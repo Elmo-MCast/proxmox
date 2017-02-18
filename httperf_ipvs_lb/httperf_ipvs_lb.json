@@ -37,48 +37,92 @@
       "enable": false
     },
     "servers": {
-      "web_server": [
-        {
-          "vm_id": 112,
-          "lb_server": 0,
-          "state_server": {
-            "id": 0,
-            "timeout": 0.05,
-            "metric": "cpu",
-            "#metric": "loadavg",
-            "#max_load": 5
-          },
-          "webpage": {
-            "cgi": {
-              "enable": false,
-              "loop-count": 30000
+      "web_server": {
+        "options": {
+          "sockets": 1,
+          "cores": 2,
+          "memory": 4096
+        },
+        "vms": [
+          {
+            "vm_id": 112,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": true,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.05,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
             }
           }
-        }
-      ],
-      "state_server": [
-        {
-          "vm_id": 116
-        }
-      ],
-      "lb_server": [
-        {
-          "vm_id": 116,
-          "web_servers": [
-            0
-          ],
-          "policy": "rr",
-          "state_server": {
-            "id": 0,
-            "timeout": 0.10
+        ]
+      },
+      "state_server": {
+        "options": {
+          "sockets": 1,
+          "cores": 1,
+          "memory": 1024
+        },
+        "vms": [
+          {
+            "vm_id": 116
           }
-        }
-      ],
+        ]
+      },
+      "lb_server": {
+        "options": {
+          "sockets": 1,
+          "cores": 2,
+          "memory": 4096
+        },
+        "vms": [
+          {
+            "vm_id": 116,
+            "web_servers": [
+              0
+            ],
+            "policy": "wlc",
+            "state_server": {
+              "id": 0,
+              "timeout": 0.10
+            }
+          }
+        ]
+      },
       "httperf_client": {
+        "options": {
+          "sockets": 1,
+          "cores": 1,
+          "memory": 2048
+        },
         "config": {
-          "num-conns": 10000,
-          "num-calls": 1,
-          "rate": 1000,
+          "num_conns": 100,
+          "num_calls": 1,
+          "rate": 5,
           "ramp": 10,
           "iters": 1,
           "timeout": 50
@@ -86,6 +130,34 @@
         "vms": [
           {
             "vm_id": 120,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 121,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 122,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 123,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 124,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 125,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 126,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 127,
             "lb_server": 0
           }
         ]

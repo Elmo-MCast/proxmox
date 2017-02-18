@@ -26,14 +26,9 @@ fab.env['httperf_ipvs_lb'] = settings['httperf_ipvs_lb']
 
 vm_id_set = set()
 for server_name, server_configs in fab.env['httperf_ipvs_lb']['servers'].iteritems():
-    if server_name == "httperf_client":
-        for vm_config in server_configs["vms"]:
-            vm_id = vm_config['vm_id']
-            vm_id_set |= {vm_id}
-    else:
-        for server_config in server_configs:
-            vm_id = server_config['vm_id']
-            vm_id_set |= {vm_id}
+    for vm_config in server_configs["vms"]:
+        vm_id = vm_config['vm_id']
+        vm_id_set |= {vm_id}
 vm_id_list = list(vm_id_set)
 
 """ 'httperf_ipvs_lb' Commands """
@@ -44,18 +39,18 @@ def setup_scripts():
     scripts = list()
     script = \
         "sudo apt-get update; " \
-        "sudo apt-get -y install libtool autoconf build-essential git " \
+        "sudo apt-get -y install libtool autoconf build-essential git cpulimit " \
         "ipvsadm apache2 bridge-utils python-memcache python-matplotlib python-psutil; " \
         "curl -sSL https://get.docker.com/ | sh; " \
         "git clone https://github.com/mshahbaz/httperf.git; " \
         "git clone https://github.com/mshahbaz/httperf-plot.git; " \
         "git clone https://github.com/mshahbaz/ipvs-dynamic-weight.git; " \
         "cd ~/httperf; autoreconf -i; ./configure; make; sudo make install; cd ~/; " \
-        "echo 'mshahbaz    hard    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
-        "echo 'mshahbaz    soft    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
-        "echo 'root        hard    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
-        "echo 'root        soft    nofile      500000' | sudo tee -a /etc/security/limits.conf; " \
-        "echo 'fs.file-max = 2097152' | sudo tee -a /etc/sysctl.conf; " \
+        "echo 'mshahbaz    hard    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'mshahbaz    soft    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'root        hard    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'root        soft    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
+        "echo 'fs.file-max = 131071' | sudo tee -a /etc/sysctl.conf; " \
         "sudo sysctl -p; "
     scripts.append("echo '%s' > ~/setup_script.sh; " % (script,))
     scripts.append("sh ~/setup_script.sh; ")
@@ -63,9 +58,62 @@ def setup_scripts():
 
 
 @fab.roles('server')
+def setup_options(vm_ids):
+    # Note: setting options for state server first, so that it won't overwrite other servers' setting with whom
+    # it may be sharing the VM.
+    state_server = fab.env['httperf_ipvs_lb']['servers']['state_server']
+    for state_server_vm in state_server['vms']:
+        vm_id = state_server_vm['vm_id']
+        sockets = state_server['options']['sockets']
+        cores = state_server['options']['cores']
+        memory = state_server['options']['memory']
+        pve.vm_options(vm_id, "sockets", sockets)
+        pve.vm_options(vm_id, "cores", cores)
+        pve.vm_options(vm_id, "memory", memory)
+
+    web_server = fab.env['httperf_ipvs_lb']['servers']['web_server']
+    for web_server_vm in web_server['vms']:
+        vm_id = web_server_vm['vm_id']
+        sockets = web_server['options']['sockets']
+        cores = web_server['options']['cores']
+        memory = web_server['options']['memory']
+        pve.vm_options(vm_id, "sockets", sockets)
+        pve.vm_options(vm_id, "cores", cores)
+        pve.vm_options(vm_id, "memory", memory)
+
+    lb_server = fab.env['httperf_ipvs_lb']['servers']['lb_server']
+    for lb_server_vm in lb_server['vms']:
+        vm_id = lb_server_vm['vm_id']
+        sockets = lb_server['options']['sockets']
+        cores = lb_server['options']['cores']
+        memory = lb_server['options']['memory']
+        pve.vm_options(vm_id, "sockets", sockets)
+        pve.vm_options(vm_id, "cores", cores)
+        pve.vm_options(vm_id, "memory", memory)
+
+    httperf_client = fab.env['httperf_ipvs_lb']['servers']['httperf_client']
+    for httperf_client_vm in httperf_client['vms']:
+        vm_id = httperf_client_vm['vm_id']
+        sockets = httperf_client['options']['sockets']
+        cores = httperf_client['options']['cores']
+        memory = httperf_client['options']['memory']
+        pve.vm_options(vm_id, "sockets", sockets)
+        pve.vm_options(vm_id, "cores", cores)
+        pve.vm_options(vm_id, "memory", memory)
+
+    for vm_id in vm_ids:
+        pve.vm_stop(vm_id)
+        pve.vm_start(vm_id)
+    for vm_id in vm_ids:
+        pve.vm_is_ready(vm_id)
+
+
+@fab.roles('server')
 def setup():
     pve.vm_generate_multi(fab.env['httperf_ipvs_lb']['vm']['base_id'], "httperf-lb", False, setup_scripts(),
                           *vm_id_list)
+    setup_options(vm_id_list)
+
     scripts = dict()
     for vm_id in vm_id_list:
         scripts[vm_id] = "sudo service docker stop; " \
@@ -82,10 +130,12 @@ def cleanup():
 @fab.roles('server')
 def configure_web_servers():
     scripts = dict()
+    web_server = fab.env['httperf_ipvs_lb']['servers']['web_server']
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
-    for web_server in fab.env['httperf_ipvs_lb']['servers']['web_server']:
-        vm_id = web_server['vm_id']
-        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server'][web_server['lb_server']]['vm_id']
+    for web_server_vm in web_server['vms']:
+        vm_id = web_server_vm['vm_id']
+        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms'][
+            web_server_vm['lb_server']]['vm_id']
         scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
                          "sudo ip link set eth1 up; " \
                          "sudo iptables -t nat -A PREROUTING -d %s%s.%s -j REDIRECT; " \
@@ -94,10 +144,12 @@ def configure_web_servers():
         scripts[vm_id] += "sudo sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf; " \
                           "sudo sed -i 's/VirtualHost \*:80/VirtualHost \*:8080/g' " \
                           "/etc/apache2/sites-enabled/000-default.conf; "
-        if web_server['webpage']['cgi']['enable']:
-            loop_count = web_server['webpage']['cgi']['loop-count']
+        if web_server_vm['webpage']['cgi']['enable']:
+            loop_count = web_server_vm['webpage']['cgi']['loop_count']
             scripts[vm_id] += \
-                "sudo git clone https://gist.github.com/3b149ddc8521a265f89bdce11af84cfa.git /usr/lib/cgi-bin/; " \
+                "sudo git clone https://gist.github.com/3b149ddc8521a265f89bdce11af84cfa.git; " \
+                "sudo mv 3b149ddc8521a265f89bdce11af84cfa/cpu.py /usr/lib/cgi-bin/; " \
+                "sudo rm -rf 3b149ddc8521a265f89bdce11af84cfa; " \
                 "sudo sed -i 's/XXX/%s/g' /usr/lib/cgi-bin/cpu.py; " \
                 "sudo sed -i 's/YYY/%s/g' /usr/lib/cgi-bin/cpu.py; " \
                 "sudo chmod a+x /usr/lib/cgi-bin/cpu.py; " \
@@ -115,21 +167,43 @@ def configure_web_servers():
             scripts[vm_id] += "sudo sed -i 's/server_id = _SERVER_ID_/server_id = %s/g' " \
                               "~/ipvs-dynamic-weight/request-lb-weight.py; " \
                               % (vm_id,)
-            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
-                web_server['state_server']['id']]['vm_id']
-            state_server_timeout = web_server['state_server']['timeout']
-            state_server_metric = web_server['state_server']['metric']
+            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server']['vms'][
+                web_server_vm['state_server']['id']]['vm_id']
+            state_server_timeout = web_server_vm['state_server']['timeout']
+            state_server_metric = web_server_vm['state_server']['metric']
             if state_server_metric == 'cpu':
                 scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s" \
                                   "> /dev/null 2> /dev/null < /dev/null & " \
                                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
                                      state_server_timeout, "False", state_server_metric)
             elif state_server_metric == 'loadavg':
-                state_server_max_load = web_server['state_server']['max_load']
+                state_server_max_load = web_server_vm['state_server']['metrics'][state_server_metric]['max_load']
                 scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s %s" \
                                   "> /dev/null 2> /dev/null < /dev/null & " \
                                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
                                      state_server_timeout, "False", state_server_metric, state_server_max_load)
+        if web_server_vm['load']['enable']:
+            scripts[vm_id] += \
+                "sudo git clone https://gist.github.com/453a427eaf2115fd7e0cf56f74a3d25c.git; " \
+                "sudo mv 453a427eaf2115fd7e0cf56f74a3d25c/inf-loop.sh ./; " \
+                "sudo rm -rf 453a427eaf2115fd7e0cf56f74a3d25c; "
+            process_count = web_server_vm['load']['process_count']
+            if web_server_vm['load']['type'] == 'cpulimit':
+                percentage = web_server_vm['load']['types']['cpulimit']['percentage']
+                scripts[vm_id] += \
+                    "sudo git clone https://gist.github.com/e821e3239c274c102bf23080ef69090d.git; " \
+                    "sudo mv e821e3239c274c102bf23080ef69090d/inf-loop-cpulimit.sh ./; " \
+                    "sudo rm -rf e821e3239c274c102bf23080ef69090d; " \
+                    "sudo nohup sh inf-loop-cpulimit.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
+                    % (process_count, percentage)
+            elif web_server_vm['load']['type'] == 'nice':
+                value = web_server_vm['load']['types']['nice']['value']
+                scripts[vm_id] += \
+                    "sudo git clone https://gist.github.com/72aa25cb9babfccba85f4b0004c3ad26.git; " \
+                    "sudo mv 72aa25cb9babfccba85f4b0004c3ad26/inf-loop-nice.sh ./; " \
+                    "sudo rm -rf 72aa25cb9babfccba85f4b0004c3ad26; " \
+                    "sudo nohup sh inf-loop-nice.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
+                    % (process_count, value)
     pve.vm_parallel_run(scripts)
 
 
@@ -137,8 +211,9 @@ def configure_web_servers():
 def configure_state_servers():
     if fab.env['httperf_ipvs_lb']['feedback']['enable']:
         scripts = dict()
-        for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
-            vm_id = state_server['vm_id']
+        state_server = fab.env['httperf_ipvs_lb']['servers']['state_server']
+        for state_server_vm in state_server['vms']:
+            vm_id = state_server_vm['vm_id']
             scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
                              "sudo ip link set eth1 up; " \
                              % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
@@ -152,9 +227,10 @@ def configure_state_servers():
 @fab.roles('server')
 def configure_lb_servers():
     scripts = dict()
+    lb_server = fab.env['httperf_ipvs_lb']['servers']['lb_server']
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
-    for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']:
-        vm_id = lb_server['vm_id']
+    for lb_server_vm in lb_server['vms']:
+        vm_id = lb_server_vm['vm_id']
         scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
                          "sudo ip link set eth1 up; " \
                          % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id)
@@ -165,20 +241,21 @@ def configure_lb_servers():
         scripts[vm_id] += "sudo service ipvsadm start; "  \
                           "sudo ifconfig eth1:0 %s%s.%s netmask 255.255.255.0 broadcast %s%s.255; " \
                           % (vip_prefix, vm_id, vm_id, vip_prefix, vm_id)
-        policy = lb_server['policy']
+        policy = lb_server_vm['policy']
         scripts[vm_id] += "sudo ipvsadm -A -t %s%s.%s:8080 -s %s; " \
                           % (vip_prefix, vm_id, vm_id, policy)
         web_server_vm_ids = []
-        for web_server_id in lb_server['web_servers']:
-            web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server'][web_server_id]['vm_id']
+        for web_server_id in lb_server_vm['web_servers']:
+            web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server']['vms'][
+                web_server_id]['vm_id']
             scripts[vm_id] += \
                 "sudo ipvsadm -a -t %s%s.%s:8080 -r %s%s:8080 -g; " \
                 % (vip_prefix, vm_id, vm_id, fab.env['httperf_ipvs_lb']['vm']['prefix_1'], web_server_vm_id)
             web_server_vm_ids.append(str(web_server_vm_id))
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
-            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server'][
-                lb_server['state_server']['id']]['vm_id']
-            state_server_timeout = lb_server['state_server']['timeout']
+            state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server']['vms'][
+                lb_server_vm['state_server']['id']]['vm_id']
+            state_server_timeout = lb_server_vm['state_server']['timeout']
             scripts[vm_id] += "sudo sed -i 's/server_ids = \[_SERVER_IDS_\]/server_ids = \[%s\]/g' " \
                               "~/ipvs-dynamic-weight/set-lb-weight.py; " \
                               "sudo sed -i 's/XXX/%s%s.%s/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
@@ -199,14 +276,15 @@ def configure_httperf_clients():
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
     for httperf_client_vm in httperf_client['vms']:
         vm_id = httperf_client_vm['vm_id']
-        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server'][httperf_client_vm['lb_server']]['vm_id']
+        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms'][
+            httperf_client_vm['lb_server']]['vm_id']
         scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
                          "sudo ip link set eth1 up; " \
                          "sudo ip route add %s%s.0/24 dev eth1; " \
                          % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], vm_id,
                             vip_prefix, lb_server_vm_id)
-        num_conns = httperf_client['config']['num-conns']
-        num_calls = httperf_client['config']['num-calls']
+        num_conns = httperf_client['config']['num_conns']
+        num_calls = httperf_client['config']['num_calls']
         rate = httperf_client['config']['rate']
         ramp = httperf_client['config']['ramp']
         iters = httperf_client['config']['iters']
@@ -281,22 +359,29 @@ def start():
 @fab.roles('server')
 def clear_web_servers():
     scripts = dict()
+    web_server = fab.env['httperf_ipvs_lb']['servers']['web_server']
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
-    for web_server in fab.env['httperf_ipvs_lb']['servers']['web_server']:
-        vm_id = web_server['vm_id']
+    for web_server_vm in web_server['vms']:
+        vm_id = web_server_vm['vm_id']
         scripts[vm_id] = ""
+        if web_server_vm['load']['enable']:
+            scripts[vm_id] += "sudo skill sh; " \
+                              "sudo rm -f inf-loop.sh; "
+            if web_server_vm['load']['type'] == 'cpulimit':
+                scripts[vm_id] += "sudo rm -f inf-loop-cpulimit.sh; "
+            elif web_server_vm['load']['type'] == 'nice':
+                scripts[vm_id] += "sudo rm -f inf-loop-nice.sh; "
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             scripts[vm_id] += "skill python; " \
                               "sudo sed -i 's/server_id = %s/server_id = _SERVER_ID_/g' " \
                               "~/ipvs-dynamic-weight/request-lb-weight.py; " \
                               % (vm_id,)
         scripts[vm_id] += "sudo sed -i 's/Listen 8080/Listen 80/g' /etc/apache2/ports.conf; " \
-                         "sudo sed -i 's/VirtualHost \*:8080/VirtualHost \*:80/g' " \
-                         "/etc/apache2/sites-enabled/000-default.conf; "
-        if web_server['webpage']['cgi']['enable']:
+                          "sudo sed -i 's/VirtualHost \*:8080/VirtualHost \*:80/g' " \
+                          "/etc/apache2/sites-enabled/000-default.conf; "
+        if web_server_vm['webpage']['cgi']['enable']:
             scripts[vm_id] +=  \
                 "sudo rm -f /usr/lib/cgi-bin/cpu.py; " \
-                "sudo rm -rf /usr/lib/cgi-bin/.git; " \
                 "sudo sed -i 's/cgi-bin\/cpu.py/index.html index.cgi index.pl index.php index.xhtml index.htm/g' " \
                 "/etc/apache2/mods-enabled/dir.conf;" \
                 "sudo a2dismod cgid; "
@@ -304,7 +389,8 @@ def clear_web_servers():
             scripts[vm_id] += "sudo rm -f /var/www/html/index.html; "
         scripts[vm_id] += "sudo sync; " \
                           "sudo service apache2 stop; "
-        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server'][web_server['lb_server']]['vm_id']
+        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms'][
+            web_server_vm['lb_server']]['vm_id']
         scripts[vm_id] += \
             "sudo iptables -t nat -D PREROUTING -d %s%s.%s -j REDIRECT; " \
             "sudo ip addr del %s%s/24 dev eth1; " \
@@ -318,8 +404,9 @@ def clear_web_servers():
 def clear_state_servers():
     if fab.env['httperf_ipvs_lb']['feedback']['enable']:
         scripts = dict()
-        for state_server in fab.env['httperf_ipvs_lb']['servers']['state_server']:
-            vm_id = state_server['vm_id']
+        state_server = fab.env['httperf_ipvs_lb']['servers']['state_server']
+        for state_server_vm in state_server['vms']:
+            vm_id = state_server_vm['vm_id']
             scripts[vm_id] = "sudo docker stop state_server_%s; " \
                              "sudo docker rm state_server_%s; " \
                              "sudo service docker stop; " % (vm_id, vm_id)
@@ -333,13 +420,15 @@ def clear_state_servers():
 @fab.roles('server')
 def clear_lb_servers():
     scripts = dict()
+    lb_server = fab.env['httperf_ipvs_lb']['servers']['lb_server']
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
-    for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']:
+    for lb_server_vm in lb_server['vms']:
         web_server_vm_ids = []
-        for web_server_id in lb_server['web_servers']:
-            web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server'][web_server_id]['vm_id']
+        for web_server_id in lb_server_vm['web_servers']:
+            web_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['web_server']['vms'][
+                web_server_id]['vm_id']
             web_server_vm_ids.append(str(web_server_vm_id))
-        vm_id = lb_server['vm_id']
+        vm_id = lb_server_vm['vm_id']
         scripts[vm_id] = ""
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             scripts[vm_id] += "skill python; " \
@@ -370,7 +459,8 @@ def clear_httperf_clients():
     vip_prefix = fab.env['httperf_ipvs_lb']['vip']['prefix']
     for httperf_client_vm in httperf_client['vms']:
         vm_id = httperf_client_vm['vm_id']
-        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server'][httperf_client_vm['lb_server']]['vm_id']
+        lb_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms'][
+            httperf_client_vm['lb_server']]['vm_id']
         scripts[vm_id] = "rm -f ~/httperf_script.sh; "
         scripts[vm_id] += \
             "sudo ip route del %s%s.0/24 dev eth1; " \

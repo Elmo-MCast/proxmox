@@ -266,9 +266,9 @@ def post_faban_client_run():
             vm_run_scripts[vm_id].append("rm -f faban_client_%s.log" % (client_id,))
             run_scripts.append("rm -f /tmp/faban_client_%s.log" % (client_id,))
     pve.vm_parallel_get(vm_get_scripts)
-    pve.host_parallel_get(get_scripts)
+    pve.parallel_get(get_scripts)
     pve.vm_parallel_run(vm_run_scripts)
-    pve.host_parallel_run(run_scripts)
+    pve.parallel_run(run_scripts)
 
 
 @fab.roles('server')
