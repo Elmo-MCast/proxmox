@@ -240,7 +240,7 @@ def configure_lb_servers():
             "sudo sed -i 's/false/true/g' /etc/default/ipvsadm; " \
             "sudo sed -i 's/none/master/g' /etc/default/ipvsadm; " \
             "sudo sed -i 's/eth0/eth1/g' /etc/default/ipvsadm; "
-        scripts[vm_id] += "sudo service ipvsadm start; "  \
+        scripts[vm_id] += "sudo service ipvsadm start; " \
                           "sudo ifconfig eth1:0 %s%s.%s netmask 255.255.255.0 broadcast %s%s.255; " \
                           % (vip_prefix, vm_id, vm_id, vip_prefix, vm_id)
         policy = lb_server_vm['policy']
@@ -399,7 +399,7 @@ def clear_web_servers():
                           "sudo sed -i 's/VirtualHost \*:8080/VirtualHost \*:80/g' " \
                           "/etc/apache2/sites-enabled/000-default.conf; "
         if web_server_vm['webpage']['cgi']['enable']:
-            scripts[vm_id] +=  \
+            scripts[vm_id] += \
                 "sudo rm -f /usr/lib/cgi-bin/cpu.py; " \
                 "sudo sed -i 's/cgi-bin\/cpu.py/index.html index.cgi index.pl index.php index.xhtml index.htm/g' " \
                 "/etc/apache2/mods-enabled/dir.conf;" \
@@ -451,8 +451,8 @@ def clear_lb_servers():
         scripts[vm_id] = ""
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             scripts[vm_id] += "skill python; " \
-                             "sudo sed -i 's/server_ids = \[%s\]/server_ids = \[_SERVER_IDS_\]/g' " \
-                             "~/ipvs-dynamic-weight/set-lb-weight.py; " \
+                              "sudo sed -i 's/server_ids = \[%s\]/server_ids = \[_SERVER_IDS_\]/g' " \
+                              "~/ipvs-dynamic-weight/set-lb-weight.py; " \
                               "sudo sed -i 's/%s%s.%s/XXX/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
                               "sudo sed -i 's/%s/YYY/g' ~/ipvs-dynamic-weight/set-lb-weight.py; " \
                               % (", ".join(web_server_vm_ids),
@@ -505,7 +505,6 @@ def clear():
     proc_state.join()
     proc_lb.join()
     proc_httperf.join()
-
 
 # The main functions are:
 # 1. setup/cleanup
