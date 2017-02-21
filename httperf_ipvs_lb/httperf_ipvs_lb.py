@@ -130,6 +130,13 @@ def cleanup():
 
 
 @fab.roles('server')
+def reboot():
+    pve.vm_parallel_reboot(vm_id_list)
+    for vm_id in vm_id_list:
+        pve.vm_is_ready(vm_id)
+
+
+@fab.roles('server')
 def configure_web_servers():
     scripts = dict()
     web_server = fab.env['httperf_ipvs_lb']['servers']['web_server']
@@ -333,18 +340,26 @@ def httperf_client_is_ready():
 
 @fab.roles('server')
 def httperf_client_run():
-    pve.vm_parallel_run({lb_server['vm_id']:
-                             "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n.py %s lb_server_%s.csv "
-                             "> /dev/null 2> /dev/null < /dev/null & "
-                             "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n--stats.py %s lb_server_stats_%s.csv "
-                             "> /dev/null 2> /dev/null < /dev/null & "
-                             % (lb_server['stats']['timeout'], lb_server['vm_id'],
-                                lb_server['stats']['timeout'], lb_server['vm_id'])
-                         for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
-    pve.vm_parallel_run({httperf_client['vm_id']: "sh ~/httperf_script.sh"
+    if fab.env['httperf_ipvs_lb']['stats']['enable']:
+        pve.vm_parallel_run({lb_server['vm_id']:
+                                 "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n.py %s lb_server_%s.csv "
+                                 "> /dev/null 2> /dev/null < /dev/null & "
+                                 "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n--stats.py %s lb_server_stats_%s.csv "
+                                 "> /dev/null 2> /dev/null < /dev/null & "
+                                 % (lb_server['stats']['timeout'], lb_server['vm_id'],
+                                    lb_server['stats']['timeout'], lb_server['vm_id'])
+                             for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
+    pve.vm_parallel_run({httperf_client['vm_id']: "sh ~/httperf_script.sh; "
                          for httperf_client in fab.env['httperf_ipvs_lb']['servers']['httperf_client']['vms']})
-    pve.vm_parallel_run({lb_server['vm_id']: "sudo pkill -u root python; "
-                         for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
+    if fab.env['httperf_ipvs_lb']['stats']['enable']:
+        pve.vm_parallel_run({lb_server['vm_id']: "sudo pkill -u root python; "
+                             for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
+
+
+@fab.roles('server')
+def httperf_client_stop():
+    pve.vm_parallel_run({httperf_client['vm_id']: "sudo skill httperf; "
+                         for httperf_client in fab.env['httperf_ipvs_lb']['servers']['httperf_client']['vms']})
 
 
 @fab.roles('server')
@@ -359,13 +374,16 @@ def post_httperf_client_run():
                 % (fab.env.password, vm_id, fab.env.roledefs['analyst'][0], fab.env['analyst']['path'], datetime_str))
         pve.vm_run(vm_id, "rm -f ~/httperf-plot/httperf_client_%s.*; " % (vm_id,))
         fab.run("rm -f /tmp/httperf_client_%s.*; " % (vm_id,))
-    for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']:
-        vm_id = lb_server['vm_id']
-        pve.vm_get(vm_id, "~/lb_server_*%s.*" % (vm_id,), "/tmp/; ")
-        fab.run("sshpass -p %s scp /tmp/lb_server_*%s.* %s:%s/%s/; "
-                % (fab.env.password, vm_id, fab.env.roledefs['analyst'][0], fab.env['analyst']['path'], datetime_str))
-        pve.vm_run(vm_id, "rm -f ~/lb_server_*%s.*; " % (vm_id,))
-        fab.run("rm -f /tmp/lb_server_*%s.*; " % (vm_id,))
+    if fab.env['httperf_ipvs_lb']['stats']['enable']:
+        for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']:
+            vm_id = lb_server['vm_id']
+            pve.vm_get(vm_id, "~/lb_server_*%s.*" % (vm_id,), "/tmp/; ")
+            fab.run("sshpass -p %s scp /tmp/lb_server_*%s.* %s:%s/%s/; "
+                    % (
+                        fab.env.password, vm_id, fab.env.roledefs['analyst'][0], fab.env['analyst']['path'],
+                        datetime_str))
+            pve.vm_run(vm_id, "rm -f ~/lb_server_*%s.*; " % (vm_id,))
+            fab.run("rm -f /tmp/lb_server_*%s.*; " % (vm_id,))
 
 
 @fab.roles('server')
@@ -373,6 +391,11 @@ def start():
     httperf_client_is_ready()
     httperf_client_run()
     post_httperf_client_run()
+
+
+@fab.roles('server')
+def stop():
+    httperf_client_stop()
 
 
 @fab.roles('server')

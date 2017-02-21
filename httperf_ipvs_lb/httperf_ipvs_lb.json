@@ -36,6 +36,9 @@
     "feedback": {
       "enable": true
     },
+    "stats":{
+      "enable": true
+    },
     "servers": {
       "web_server": {
         "options": {
@@ -55,6 +58,111 @@
             },
             "load": {
               "enable": false,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.05,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 113,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": false,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.05,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 114,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": false,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.05,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 115,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -103,15 +211,18 @@
           {
             "vm_id": 116,
             "web_servers": [
-              0
+              0,
+              1,
+              2,
+              3
             ],
-            "policy": "wrr",
+            "policy": "wlc",
             "state_server": {
               "id": 0,
               "timeout": 0.10
             },
             "stats": {
-              "timeout": 0.10
+              "timeout": 0.01
             }
           }
         ]
@@ -123,7 +234,7 @@
           "memory": 2048
         },
         "config": {
-          "num_conns": 480,
+          "num_conns": 4320,
           "num_calls": 1,
           "rate": 24,
           "ramp": 10,
@@ -133,6 +244,34 @@
         "vms": [
           {
             "vm_id": 120,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 121,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 122,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 123,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 124,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 125,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 126,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 127,
             "lb_server": 0
           }
         ]
