@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from multiprocessing import Process
 import fabric.api as fab
+import time
 
 from pve import pve
 from helpers import results
@@ -45,6 +46,7 @@ def setup_scripts():
         "git clone https://github.com/mshahbaz/httperf.git; " \
         "git clone https://github.com/mshahbaz/httperf-plot.git; " \
         "git clone https://github.com/mshahbaz/ipvs-dynamic-weight.git; " \
+        "git clone https://github.com/mshahbaz/ipvs-utils.git; " \
         "cd ~/httperf; autoreconf -i; ./configure; make; sudo make install; cd ~/; " \
         "echo 'mshahbaz    hard    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
         "echo 'mshahbaz    soft    nofile      65535' | sudo tee -a /etc/security/limits.conf; " \
@@ -331,8 +333,18 @@ def httperf_client_is_ready():
 
 @fab.roles('server')
 def httperf_client_run():
+    pve.vm_parallel_run({lb_server['vm_id']:
+                             "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n.py %s lb_server_%s.csv "
+                             "> /dev/null 2> /dev/null < /dev/null & "
+                             "sudo nohup python ~/ipvs-utils/dump-ipvsadm-L-n--stats.py %s lb_server_stats_%s.csv "
+                             "> /dev/null 2> /dev/null < /dev/null & "
+                             % (lb_server['stats']['timeout'], lb_server['vm_id'],
+                                lb_server['stats']['timeout'], lb_server['vm_id'])
+                         for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
     pve.vm_parallel_run({httperf_client['vm_id']: "sh ~/httperf_script.sh"
                          for httperf_client in fab.env['httperf_ipvs_lb']['servers']['httperf_client']['vms']})
+    pve.vm_parallel_run({lb_server['vm_id']: "sudo pkill -u root python; "
+                         for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']})
 
 
 @fab.roles('server')
@@ -347,6 +359,13 @@ def post_httperf_client_run():
                 % (fab.env.password, vm_id, fab.env.roledefs['analyst'][0], fab.env['analyst']['path'], datetime_str))
         pve.vm_run(vm_id, "rm -f ~/httperf-plot/httperf_client_%s.*; " % (vm_id,))
         fab.run("rm -f /tmp/httperf_client_%s.*; " % (vm_id,))
+    for lb_server in fab.env['httperf_ipvs_lb']['servers']['lb_server']['vms']:
+        vm_id = lb_server['vm_id']
+        pve.vm_get(vm_id, "~/lb_server_*%s.*" % (vm_id,), "/tmp/; ")
+        fab.run("sshpass -p %s scp /tmp/lb_server_*%s.* %s:%s/%s/; "
+                % (fab.env.password, vm_id, fab.env.roledefs['analyst'][0], fab.env['analyst']['path'], datetime_str))
+        pve.vm_run(vm_id, "rm -f ~/lb_server_*%s.*; " % (vm_id,))
+        fab.run("rm -f /tmp/lb_server_*%s.*; " % (vm_id,))
 
 
 @fab.roles('server')
@@ -486,6 +505,7 @@ def clear():
     proc_state.join()
     proc_lb.join()
     proc_httperf.join()
+
 
 # The main functions are:
 # 1. setup/cleanup

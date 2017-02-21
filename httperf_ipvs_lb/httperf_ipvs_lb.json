@@ -34,7 +34,7 @@
       "prefix": "172.16."
     },
     "feedback": {
-      "enable": false
+      "enable": true
     },
     "servers": {
       "web_server": {
@@ -54,7 +54,7 @@
               }
             },
             "load": {
-              "enable": true,
+              "enable": false,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -105,9 +105,12 @@
             "web_servers": [
               0
             ],
-            "policy": "wlc",
+            "policy": "wrr",
             "state_server": {
               "id": 0,
+              "timeout": 0.10
+            },
+            "stats": {
               "timeout": 0.10
             }
           }
@@ -120,9 +123,9 @@
           "memory": 2048
         },
         "config": {
-          "num_conns": 100,
+          "num_conns": 480,
           "num_calls": 1,
-          "rate": 5,
+          "rate": 24,
           "ramp": 10,
           "iters": 1,
           "timeout": 50
@@ -130,34 +133,6 @@
         "vms": [
           {
             "vm_id": 120,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 121,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 122,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 123,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 124,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 125,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 126,
-            "lb_server": 0
-          },
-          {
-            "vm_id": 127,
             "lb_server": 0
           }
         ]
