@@ -34,9 +34,6 @@
       "prefix": "172.16."
     },
     "feedback": {
-      "enable": false
-    },
-    "stats":{
       "enable": true
     },
     "servers": {
@@ -220,9 +217,6 @@
             "state_server": {
               "id": 0,
               "timeout": 0.10
-            },
-            "stats": {
-              "timeout": 0.01
             }
           }
         ]
