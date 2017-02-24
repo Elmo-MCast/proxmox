@@ -216,7 +216,7 @@
               2,
               3
             ],
-            "policy": "wrr",
+            "policy": "wlc",
             "state_server": {
               "id": 0,
               "timeout": 0.10
