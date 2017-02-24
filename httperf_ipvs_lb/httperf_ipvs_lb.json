@@ -68,7 +68,8 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 1
             },
             "state_server": {
               "id": 0,
@@ -103,7 +104,8 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 1
             },
             "state_server": {
               "id": 0,
@@ -138,7 +140,8 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 1
             },
             "state_server": {
               "id": 0,
@@ -173,7 +176,8 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -218,7 +222,7 @@
             ],
             "lb": {
               "policy": "wlc",
-              "fin_timeout": 10
+              "fin_timeout": 1
             },
             "state_server": {
               "id": 0,

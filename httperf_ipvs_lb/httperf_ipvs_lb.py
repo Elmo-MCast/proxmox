@@ -197,22 +197,41 @@ def configure_web_servers():
                 "sudo mv 453a427eaf2115fd7e0cf56f74a3d25c/inf-loop.sh ./; " \
                 "sudo rm -rf 453a427eaf2115fd7e0cf56f74a3d25c; "
             process_count = web_server_vm['load']['process_count']
+            time_variance = web_server_vm['load']['time_variance']
             if web_server_vm['load']['type'] == 'cpulimit':
                 percentage = web_server_vm['load']['types']['cpulimit']['percentage']
                 scripts[vm_id] += \
                     "sudo git clone https://gist.github.com/e821e3239c274c102bf23080ef69090d.git; " \
                     "sudo mv e821e3239c274c102bf23080ef69090d/inf-loop-cpulimit.sh ./; " \
-                    "sudo rm -rf e821e3239c274c102bf23080ef69090d; " \
-                    "sudo nohup sh inf-loop-cpulimit.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
-                    % (process_count, percentage)
+                    "sudo rm -rf e821e3239c274c102bf23080ef69090d; "
+                if time_variance == 0:
+                    scripts[vm_id] += \
+                        "sudo nohup sh inf-loop-cpulimit.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
+                        % (process_count, percentage)
+                else:
+                    scripts[vm_id] += \
+                        "sudo git clone https://gist.github.com/b6a94c0303107806e21a4878241f995b.git; " \
+                        "sudo mv b6a94c0303107806e21a4878241f995b/inf-loop-cpulimit-rand.sh ./; " \
+                        "sudo rm -rf b6a94c0303107806e21a4878241f995b; " \
+                        "sudo nohup sh inf-loop-cpulimit-rand.sh %s %s %s > /dev/null 2> /dev/null < /dev/null & " \
+                        % (process_count, percentage, time_variance)
             elif web_server_vm['load']['type'] == 'nice':
                 value = web_server_vm['load']['types']['nice']['value']
                 scripts[vm_id] += \
                     "sudo git clone https://gist.github.com/72aa25cb9babfccba85f4b0004c3ad26.git; " \
                     "sudo mv 72aa25cb9babfccba85f4b0004c3ad26/inf-loop-nice.sh ./; " \
-                    "sudo rm -rf 72aa25cb9babfccba85f4b0004c3ad26; " \
-                    "sudo nohup sh inf-loop-nice.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
-                    % (process_count, value)
+                    "sudo rm -rf 72aa25cb9babfccba85f4b0004c3ad26; "
+                if time_variance == 0:
+                    scripts[vm_id] += \
+                        "sudo nohup sh inf-loop-nice.sh %s %s > /dev/null 2> /dev/null < /dev/null; " \
+                        % (process_count, value)
+                else:
+                    scripts[vm_id] += \
+                        "sudo git clone https://gist.github.com/35d3a537095b8b9a8eb873a1bb72abbb.git; " \
+                        "sudo mv 35d3a537095b8b9a8eb873a1bb72abbb/inf-loop-nice-rand.sh ./; " \
+                        "sudo rm -rf 35d3a537095b8b9a8eb873a1bb72abbb; " \
+                        "sudo nohup sh inf-loop-nice-rand.sh %s %s %s > /dev/null 2> /dev/null < /dev/null & " \
+                        % (process_count, value, time_variance)
     pve.vm_parallel_run(scripts)
 
 
@@ -411,10 +430,15 @@ def clear_web_servers():
         if web_server_vm['load']['enable']:
             scripts[vm_id] += "sudo skill sh; " \
                               "sudo rm -f inf-loop.sh; "
+            time_variance = web_server_vm['load']['time_variance']
             if web_server_vm['load']['type'] == 'cpulimit':
                 scripts[vm_id] += "sudo rm -f inf-loop-cpulimit.sh; "
+                if time_variance != 0:
+                    scripts[vm_id] += "sudo rm -f inf-loop-cpulimit-rand.sh; "
             elif web_server_vm['load']['type'] == 'nice':
                 scripts[vm_id] += "sudo rm -f inf-loop-nice.sh; "
+                if time_variance != 0:
+                    scripts[vm_id] += "sudo rm -f inf-loop-nice-rand.sh; "
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             scripts[vm_id] += "skill python; " \
                               "sudo sed -i 's/server_id = %s/server_id = _SERVER_ID_/g' " \
