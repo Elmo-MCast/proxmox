@@ -216,7 +216,10 @@
               2,
               3
             ],
-            "policy": "wlc",
+            "lb": {
+              "policy": "wlc",
+              "fin_timeout": 10
+            },
             "state_server": {
               "id": 0,
               "timeout": 0.10

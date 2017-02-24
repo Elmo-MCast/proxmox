@@ -250,7 +250,7 @@ def configure_lb_servers():
         scripts[vm_id] += "sudo service ipvsadm start; " \
                           "sudo ifconfig eth1:0 %s%s.%s netmask 255.255.255.0 broadcast %s%s.255; " \
                           % (vip_prefix, vm_id, vm_id, vip_prefix, vm_id)
-        policy = lb_server_vm['policy']
+        policy = lb_server_vm['lb']['policy']
         scripts[vm_id] += "sudo ipvsadm -A -t %s%s.%s:8080 -s %s; " \
                           % (vip_prefix, vm_id, vm_id, policy)
         web_server_vm_ids = []
@@ -261,6 +261,8 @@ def configure_lb_servers():
                 "sudo ipvsadm -a -t %s%s.%s:8080 -r %s%s:8080 -g; " \
                 % (vip_prefix, vm_id, vm_id, fab.env['httperf_ipvs_lb']['vm']['prefix_1'], web_server_vm_id)
             web_server_vm_ids.append(str(web_server_vm_id))
+        fin_timeout = lb_server_vm['lb']['fin_timeout']
+        scripts[vm_id] += "sudo ipvsadm --set 0 %s 0; " % (fin_timeout,)
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server']['vms'][
                 lb_server_vm['state_server']['id']]['vm_id']
@@ -471,7 +473,7 @@ def clear_lb_servers():
                 web_server_id]['vm_id']
             web_server_vm_ids.append(str(web_server_vm_id))
         vm_id = lb_server_vm['vm_id']
-        scripts[vm_id] = ""
+        scripts[vm_id] = "sudo ipvsadm --set 0 120 0; "
         if fab.env['httperf_ipvs_lb']['feedback']['enable']:
             scripts[vm_id] += "skill python; " \
                               "sudo sed -i 's/server_ids = \[%s\]/server_ids = \[_SERVER_IDS_\]/g' " \
