@@ -181,13 +181,13 @@ def configure_web_servers():
             state_server_timeout = web_server_vm['state_server']['timeout']
             state_server_metric = web_server_vm['state_server']['metric']
             if state_server_metric == 'cpu':
-                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s" \
+                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s " \
                                   "> /dev/null 2> /dev/null < /dev/null & " \
                                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
                                      state_server_timeout, "False", state_server_metric)
             elif state_server_metric == 'loadavg':
                 state_server_max_load = web_server_vm['state_server']['metrics'][state_server_metric]['max_load']
-                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s %s" \
+                scripts[vm_id] += "nohup python ~/ipvs-dynamic-weight/request-lb-weight.py %s%s:11211 %s %s %s %s " \
                                   "> /dev/null 2> /dev/null < /dev/null & " \
                                   % (fab.env['httperf_ipvs_lb']['vm']['prefix_1'], state_server_vm_id,
                                      state_server_timeout, "False", state_server_metric, state_server_max_load)
