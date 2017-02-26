@@ -191,6 +191,7 @@ def configure_web_servers():
                 "sudo mv 453a427eaf2115fd7e0cf56f74a3d25c/inf-loop.sh ./; " \
                 "sudo rm -rf 453a427eaf2115fd7e0cf56f74a3d25c; "
             process_count = web_server_vm['load']['process_count']
+            seed_value = web_server_vm['load']['seed_value']
             time_variance = web_server_vm['load']['time_variance']
             if web_server_vm['load']['type'] == 'cpulimit':
                 percentage = web_server_vm['load']['types']['cpulimit']['percentage']
@@ -207,8 +208,9 @@ def configure_web_servers():
                         "sudo git clone https://gist.github.com/b6a94c0303107806e21a4878241f995b.git; " \
                         "sudo mv b6a94c0303107806e21a4878241f995b/inf-loop-cpulimit-rand.sh ./; " \
                         "sudo rm -rf b6a94c0303107806e21a4878241f995b; " \
-                        "sudo nohup sh inf-loop-cpulimit-rand.sh %s %s %s > /dev/null 2> /dev/null < /dev/null & " \
-                        % (process_count, percentage, time_variance)
+                        "sudo nohup bash inf-loop-cpulimit-rand.sh %s %s %s %s " \
+                        "> /dev/null 2> /dev/null < /dev/null & " \
+                        % (seed_value, process_count, percentage, time_variance)
             elif web_server_vm['load']['type'] == 'nice':
                 value = web_server_vm['load']['types']['nice']['value']
                 scripts[vm_id] += \
@@ -224,8 +226,9 @@ def configure_web_servers():
                         "sudo git clone https://gist.github.com/35d3a537095b8b9a8eb873a1bb72abbb.git; " \
                         "sudo mv 35d3a537095b8b9a8eb873a1bb72abbb/inf-loop-nice-rand.sh ./; " \
                         "sudo rm -rf 35d3a537095b8b9a8eb873a1bb72abbb; " \
-                        "sudo nohup sh inf-loop-nice-rand.sh %s %s %s > /dev/null 2> /dev/null < /dev/null & " \
-                        % (process_count, value, time_variance)
+                        "sudo nohup bash inf-loop-nice-rand.sh %s %s %s %s " \
+                        "> /dev/null 2> /dev/null < /dev/null & " \
+                        % (seed_value, process_count, value, time_variance)
     pve.vm_parallel_run(scripts)
 
 
@@ -425,6 +428,11 @@ def clear_web_servers():
             scripts[vm_id] += "sudo skill sh; " \
                               "sudo rm -f inf-loop.sh; "
             time_variance = web_server_vm['load']['time_variance']
+            if time_variance != 0:
+                scripts[vm_id] += \
+                    "sudo git clone https://gist.github.com/ed99f8bdc71c44eb4bd8937c62401652.git; " \
+                    "sudo sh ed99f8bdc71c44eb4bd8937c62401652/kill-inf-loop-rand.sh; " \
+                    "sudo rm -rf ed99f8bdc71c44eb4bd8937c62401652; "
             if web_server_vm['load']['type'] == 'cpulimit':
                 scripts[vm_id] += "sudo rm -f inf-loop-cpulimit.sh; "
                 if time_variance != 0:
