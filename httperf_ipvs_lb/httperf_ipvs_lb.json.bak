@@ -34,6 +34,9 @@
       "prefix": "172.16."
     },
     "feedback": {
+      "enable": false
+    },
+    "stats":{
       "enable": true
     },
     "servers": {
@@ -54,7 +57,7 @@
               }
             },
             "load": {
-              "enable": false,
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -65,11 +68,12 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 0.1
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.05,
+              "timeout": 0.001,
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
@@ -89,7 +93,7 @@
               }
             },
             "load": {
-              "enable": false,
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -100,11 +104,12 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 0.1
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.05,
+              "timeout": 0.001,
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
@@ -124,7 +129,7 @@
               }
             },
             "load": {
-              "enable": false,
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -135,11 +140,12 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 0.1
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.05,
+              "timeout": 0.001,
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
@@ -170,11 +176,12 @@
                   "value": 20
                 }
               },
-              "process_count": 100
+              "process_count": 100,
+              "time_variance": 0.1
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.05,
+              "timeout": 0.001,
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
@@ -213,10 +220,16 @@
               2,
               3
             ],
-            "policy": "wrr",
+            "lb": {
+              "policy": "wlc",
+              "fin_timeout": 1
+            },
             "state_server": {
               "id": 0,
-              "timeout": 0.10
+              "timeout": 0.002
+            },
+            "stats": {
+              "timeout": 0.01
             }
           }
         ]
