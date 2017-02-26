@@ -130,13 +130,6 @@ def cleanup():
 
 
 @fab.roles('server')
-def reboot():
-    pve.vm_parallel_reboot(vm_id_list)
-    for vm_id in vm_id_list:
-        pve.vm_is_ready(vm_id)
-
-
-@fab.roles('server')
 def configure_web_servers():
     scripts = dict()
     web_server = fab.env['httperf_ipvs_lb']['servers']['web_server']
@@ -555,6 +548,15 @@ def clear():
     proc_state.join()
     proc_lb.join()
     proc_httperf.join()
+
+
+@fab.roles('server')
+def reboot():
+    clear()
+    pve.vm_parallel_reboot(vm_id_list)
+    for vm_id in vm_id_list:
+        pve.vm_is_ready(vm_id)
+
 
 # The main functions are:
 # 1. setup/cleanup

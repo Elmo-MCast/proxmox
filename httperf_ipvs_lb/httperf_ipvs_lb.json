@@ -34,7 +34,7 @@
       "prefix": "172.16."
     },
     "feedback": {
-      "enable": false
+      "enable": true
     },
     "stats":{
       "enable": true
@@ -57,7 +57,7 @@
               }
             },
             "load": {
-              "enable": false,
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -69,11 +69,128 @@
                 }
               },
               "process_count": 100,
-              "time_variance": 0.1
+              "time_variance": 10
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.001,
+              "timeout": 0.01,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "cpu": {
+                  "alpha_value": 0.1
+                },
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 113,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": true,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100,
+              "time_variance": 10
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.01,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "cpu": {
+                  "alpha_value": 0.1
+                },
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 114,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": true,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100,
+              "time_variance": 10
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.01,
+              "metric": "cpu",
+              "#metric": "loadavg",
+              "metrics": {
+                "cpu": {
+                  "alpha_value": 0.1
+                },
+                "loadavg": {
+                  "max_load": 5
+                }
+              }
+            }
+          },
+          {
+            "vm_id": 115,
+            "lb_server": 0,
+            "webpage": {
+              "cgi": {
+                "enable": true,
+                "loop_count": 1
+              }
+            },
+            "load": {
+              "enable": true,
+              "type": "cpulimit",
+              "#type": "nice",
+              "types": {
+                "cpulimit": {
+                  "percentage": 100
+                },
+                "nice": {
+                  "value": 20
+                }
+              },
+              "process_count": 100,
+              "time_variance": 10
+            },
+            "state_server": {
+              "id": 0,
+              "timeout": 0.01,
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
@@ -110,15 +227,18 @@
           {
             "vm_id": 116,
             "web_servers": [
-              0
+              0,
+              1,
+              2,
+              3
             ],
             "lb": {
-              "policy": "wrr",
+              "policy": "wlc",
               "fin_timeout": 1
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.002
+              "timeout": 0.01
             },
             "stats": {
               "timeout": 0.01
@@ -133,9 +253,9 @@
           "memory": 2048
         },
         "config": {
-          "num_conns": 20,
+          "num_conns": 14400,
           "num_calls": 1,
-          "rate": 1,
+          "rate": 24,
           "ramp": 10,
           "iters": 1,
           "timeout": 50
@@ -143,6 +263,34 @@
         "vms": [
           {
             "vm_id": 120,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 121,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 122,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 123,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 124,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 125,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 126,
+            "lb_server": 0
+          },
+          {
+            "vm_id": 127,
             "lb_server": 0
           }
         ]
