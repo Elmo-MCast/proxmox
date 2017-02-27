@@ -34,7 +34,9 @@
       "prefix": "172.16."
     },
     "feedback": {
-      "enable": true
+      "enable": true,
+      "is_dummy": false,
+      "@Shahbaz": "is_dummy is to generate equal load on the backends when running WLC"
     },
     "stats":{
       "enable": true
@@ -109,7 +111,7 @@
                 }
               },
               "process_count": 100,
-              "seed_value": 1,
+              "seed_value": 11,
               "time_variance": 10
             },
             "state_server": {
@@ -149,7 +151,7 @@
                 }
               },
               "process_count": 100,
-              "seed_value": 1,
+              "seed_value": 111,
               "time_variance": 10
             },
             "state_server": {
@@ -189,7 +191,7 @@
                 }
               },
               "process_count": 100,
-              "seed_value": 1,
+              "seed_value": 1111,
               "time_variance": 10
             },
             "state_server": {
