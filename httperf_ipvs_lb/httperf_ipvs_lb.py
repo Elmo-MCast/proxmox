@@ -170,7 +170,7 @@ def configure_web_servers():
                               "~/ipvs-dynamic-weight/request-lb-weight.py; " \
                               % (vm_id,)
             if fab.env['httperf_ipvs_lb']['feedback']['is_dummy']:
-                scripts[vm_id] += "sudo sed -i 's/\# else: weight = 1/else: weight = 1/g' " \
+                scripts[vm_id] += "sudo sed -i 's/\# else: weight = XXX/else: weight = 1/g' " \
                                   "~/ipvs-dynamic-weight/request-lb-weight.py; "
             state_server_vm_id = fab.env['httperf_ipvs_lb']['servers']['state_server']['vms'][
                 web_server_vm['state_server']['id']]['vm_id']
@@ -450,7 +450,7 @@ def clear_web_servers():
                               "~/ipvs-dynamic-weight/request-lb-weight.py; " \
                               % (vm_id,)
             if fab.env['httperf_ipvs_lb']['feedback']['is_dummy']:
-                scripts[vm_id] += "sudo sed -i 's/else: weight = 1/\# else: weight = 1/g' " \
+                scripts[vm_id] += "sudo sed -i 's/else: weight = 1/\# else: weight = XXX/g' " \
                                   "~/ipvs-dynamic-weight/request-lb-weight.py; "
         scripts[vm_id] += "sudo sed -i 's/Listen 8080/Listen 80/g' /etc/apache2/ports.conf; " \
                           "sudo sed -i 's/VirtualHost \*:8080/VirtualHost \*:80/g' " \
@@ -570,6 +570,13 @@ def reboot():
     pve.vm_parallel_reboot(vm_id_list)
     for vm_id in vm_id_list:
         pve.vm_is_ready(vm_id)
+
+
+@fab.roles('server')
+def run():
+    configure()
+    time.sleep(60)
+    start()
 
 
 # The main functions are:
