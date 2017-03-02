@@ -34,7 +34,9 @@
       "prefix": "172.16."
     },
     "feedback": {
-      "enable": false
+      "enable": true,
+      "is_dummy": true,
+      "@Shahbaz": "is_dummy is to generate equal load on the backends when running WLC"
     },
     "stats":{
       "enable": true
@@ -69,7 +71,8 @@
                 }
               },
               "process_count": 100,
-              "time_variance": 0.1
+              "seed_value": 4,
+              "time_variance": 10
             },
             "state_server": {
               "id": 0,
@@ -77,6 +80,9 @@
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
+                "cpu": {
+                  "alpha_value": 0.5
+                },
                 "loadavg": {
                   "max_load": 5
                 }
@@ -105,7 +111,8 @@
                 }
               },
               "process_count": 100,
-              "time_variance": 0.1
+              "seed_value": 44,
+              "time_variance": 10
             },
             "state_server": {
               "id": 0,
@@ -113,6 +120,9 @@
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
+                "cpu": {
+                  "alpha_value": 0.5
+                },
                 "loadavg": {
                   "max_load": 5
                 }
@@ -141,7 +151,8 @@
                 }
               },
               "process_count": 100,
-              "time_variance": 0.1
+              "seed_value": 444,
+              "time_variance": 10
             },
             "state_server": {
               "id": 0,
@@ -149,6 +160,9 @@
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
+                "cpu": {
+                  "alpha_value": 0.5
+                },
                 "loadavg": {
                   "max_load": 5
                 }
@@ -177,7 +191,8 @@
                 }
               },
               "process_count": 100,
-              "time_variance": 0.1
+              "seed_value": 4444,
+              "time_variance": 10
             },
             "state_server": {
               "id": 0,
@@ -185,6 +200,9 @@
               "metric": "cpu",
               "#metric": "loadavg",
               "metrics": {
+                "cpu": {
+                  "alpha_value": 0.5
+                },
                 "loadavg": {
                   "max_load": 5
                 }
@@ -226,10 +244,10 @@
             },
             "state_server": {
               "id": 0,
-              "timeout": 0.002
+              "timeout": 0.001
             },
             "stats": {
-              "timeout": 0.01
+              "timeout": 0.001
             }
           }
         ]
@@ -241,7 +259,7 @@
           "memory": 2048
         },
         "config": {
-          "num_conns": 4320,
+          "num_conns": 14400,
           "num_calls": 1,
           "rate": 24,
           "ramp": 10,

@@ -64,15 +64,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 1,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 2,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -104,15 +104,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 11,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 22,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -144,15 +144,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 111,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 222,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -179,20 +179,20 @@
               }
             },
             "load": {
-              "enable": true,
+              "enable": false,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 1111,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 2222,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
