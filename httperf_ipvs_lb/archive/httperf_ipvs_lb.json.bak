@@ -35,7 +35,7 @@
     },
     "feedback": {
       "enable": true,
-      "is_dummy": true,
+      "is_dummy": false,
       "@Shahbaz": "is_dummy is to generate equal load on the backends when running WLC"
     },
     "stats":{
@@ -64,15 +64,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 4,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 1,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -104,15 +104,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 44,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 11,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -144,15 +144,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 444,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 111,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -184,15 +184,15 @@
               "#type": "nice",
               "types": {
                 "cpulimit": {
-                  "percentage": 100
+                  "percentage": 4
                 },
                 "nice": {
                   "value": 20
                 }
               },
-              "process_count": 100,
-              "seed_value": 4444,
-              "time_variance": 10
+              "process_count": 38,
+              "seed_value": 1111,
+              "time_variance": 0.5
             },
             "state_server": {
               "id": 0,
@@ -259,9 +259,9 @@
           "memory": 2048
         },
         "config": {
-          "num_conns": 14400,
+          "num_conns": 2400,
           "num_calls": 1,
-          "rate": 24,
+          "rate": 8,
           "ramp": 10,
           "iters": 1,
           "timeout": 50
