@@ -128,7 +128,3 @@ for arrival_rate in arrival_rates:
                              base_dirs['dst'] + dst_dir))
                 fab.local("rm -f /tmp/datetime_str.tmp")
 
-                break
-            break
-        break
-    break
