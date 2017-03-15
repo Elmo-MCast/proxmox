@@ -44,20 +44,20 @@ arrival_rates = {
         'rate': (X_max['rate'] / num_clients),
         'num_conns': (X_max['rate'] / num_clients) * run_time_secs
     },
-    '2_X_max': {
-        'rate': (2 * X_max['rate'] / num_clients),
-        'num_conns': (2 * X_max['rate'] / num_clients) * run_time_secs
-    },
-    '3_X_max': {
-        'rate': (3 * X_max['rate'] / num_clients),
-        'num_conns': (3 * X_max['rate'] / num_clients) * run_time_secs
-    }
+    # '2_X_max': {
+    #     'rate': (2 * X_max['rate'] / num_clients),
+    #     'num_conns': (2 * X_max['rate'] / num_clients) * run_time_secs
+    # },
+    # '3_X_max': {
+    #     'rate': (3 * X_max['rate'] / num_clients),
+    #     'num_conns': (3 * X_max['rate'] / num_clients) * run_time_secs
+    # }
 }
 
 seed_values = {
-    '112': [1, 2, 3],
-    '113': [11, 22, 33],
-    '114': [111, 222, 333],
+    # '112': [1, 2, 3],
+    # '113': [11, 22, 33],
+    # '114': [111, 222, 333],
     '115': [1111, 2222, 3333],
 }
 
@@ -122,7 +122,7 @@ for arrival_rate in arrival_rates:
                 with open("/tmp/datetime_str.tmp") as datetime_str_file:
                     src_dir = datetime_str_file.read()
                 dst_dir = '%s/%s/%s-feedback/%s/%s-seed' \
-                          % (run_params, arrival_rate, feedback_interval, algo, seed)
+                          % (arrival_rate, run_params, feedback_interval, algo, seed)
                 fab.local("fab -f fabfile_httperf_ipvs_lb.py collect_run:%s,%s"
                           % (base_dirs['src'] + src_dir,
                              base_dirs['dst'] + dst_dir))
