@@ -80,7 +80,7 @@ algos = {
     }
 }
 
-with open(os.path.dirname(__file__) + "/httperf_ipvs_lb/httperf_ipvs_lb.config.json") as json_file:
+with open("./httperf_ipvs_lb/httperf_ipvs_lb.config.json") as json_file:
     settings = json.load(json_file)
 
 settings['httperf_ipvs_lb']['servers']['httperf_client']['options']['datetime']['dump'] = True
@@ -108,15 +108,15 @@ for arrival_rate in arrival_rates:
                         [lb_servers[lb_server]['id']]['state_server']['timeout'] = \
                         feedback_intervals[feedback_interval]
 
-                with open(os.path.dirname(__file__) + "/httperf_ipvs_lb/httperf_ipvs_lb.json", 'w') as json_file:
+                with open("./httperf_ipvs_lb/httperf_ipvs_lb.json", 'w') as json_file:
                     json.dump(settings, json_file)
 
                 print (arrival_rate, seed, algo, feedback_interval)
 
-                time.sleep(60)
+                time.sleep(10)
                 fab.local("fab -f fabfile_httperf_ipvs_lb.py run")
 
-                time.sleep(10)
+                time.sleep(5)
                 fab.local("fab -f fabfile_httperf_ipvs_lb.py clear")
 
                 with open("/tmp/datetime_str.tmp") as datetime_str_file:
