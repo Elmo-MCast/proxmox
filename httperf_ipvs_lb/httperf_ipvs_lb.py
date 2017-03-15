@@ -406,6 +406,10 @@ def post_httperf_client_run():
             pve.vm_run(vm_id, "rm -f ~/lb_server_*%s.*; " % (vm_id,))
             fab.run("rm -f /tmp/lb_server_*%s.*; " % (vm_id,))
 
+    if fab.env['httperf_ipvs_lb']['servers']['httperf_client']['options']['datetime']['dump']:
+        with open("/tmp/datetime_str.tmp", 'w') as datetime_str_file:
+            datetime_str_file.write(datetime_str)
+
 
 @fab.roles('server')
 def start():
@@ -583,3 +587,11 @@ def run():
 # 1. setup/cleanup
 # 2. configure/clear
 # 3. start
+
+
+@fab.roles('analyst')
+def collect_run(src, dst):
+    fab.run('mkdir -p %s' % (dst,))
+    fab.run('mv -f %s %s/run' % (src, dst))
+
+

@@ -35,7 +35,7 @@
     },
     "feedback": {
       "enable": true,
-      "is_dummy": false,
+      "is_dummy": true,
       "@Shahbaz": "is_dummy is to generate equal load on the backends when running WLC"
     },
     "stats":{
@@ -59,7 +59,7 @@
               }
             },
             "load": {
-              "enable": true,
+              "enable": false,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -71,7 +71,7 @@
                 }
               },
               "process_count": 38,
-              "seed_value": 2,
+              "seed_value": 1,
               "time_variance": 0.5
             },
             "state_server": {
@@ -99,7 +99,7 @@
               }
             },
             "load": {
-              "enable": true,
+              "enable": false,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -111,7 +111,7 @@
                 }
               },
               "process_count": 38,
-              "seed_value": 22,
+              "seed_value": 11,
               "time_variance": 0.5
             },
             "state_server": {
@@ -139,7 +139,7 @@
               }
             },
             "load": {
-              "enable": true,
+              "enable": false,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -151,7 +151,7 @@
                 }
               },
               "process_count": 38,
-              "seed_value": 222,
+              "seed_value": 111,
               "time_variance": 0.5
             },
             "state_server": {
@@ -179,7 +179,7 @@
               }
             },
             "load": {
-              "enable": false,
+              "enable": true,
               "type": "cpulimit",
               "#type": "nice",
               "types": {
@@ -191,7 +191,7 @@
                 }
               },
               "process_count": 38,
-              "seed_value": 2222,
+              "seed_value": 1111,
               "time_variance": 0.5
             },
             "state_server": {
@@ -256,12 +256,15 @@
         "options": {
           "sockets": 1,
           "cores": 1,
-          "memory": 2048
+          "memory": 2048,
+          "datetime": {
+            "dump": false
+          }
         },
         "config": {
-          "num_conns": 14400,
+          "num_conns": 1440,
           "num_calls": 1,
-          "rate": 24,
+          "rate": 8,
           "ramp": 10,
           "iters": 1,
           "timeout": 50
