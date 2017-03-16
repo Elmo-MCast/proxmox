@@ -40,25 +40,29 @@ lb_servers = {
 }
 
 arrival_rates = {
-    '1_X_max': {
-        'rate': (X_max['rate'] / num_clients),
-        'num_conns': (X_max['rate'] / num_clients) * run_time_secs
-    },
-    # '2_X_max': {
-    #     'rate': (2 * X_max['rate'] / num_clients),
-    #     'num_conns': (2 * X_max['rate'] / num_clients) * run_time_secs
+    # '1_X_max': {
+    #     'rate': (X_max['rate'] / num_clients),
+    #     'num_conns': (X_max['rate'] / num_clients) * run_time_secs
     # },
-    # '3_X_max': {
-    #     'rate': (3 * X_max['rate'] / num_clients),
-    #     'num_conns': (3 * X_max['rate'] / num_clients) * run_time_secs
-    # }
+    '2_X_max': {
+        'rate': (2 * X_max['rate'] / num_clients),
+        'num_conns': (2 * X_max['rate'] / num_clients) * run_time_secs
+    },
+    '3_X_max': {
+        'rate': (3 * X_max['rate'] / num_clients),
+        'num_conns': (3 * X_max['rate'] / num_clients) * run_time_secs
+    }
 }
 
 seed_values = {
     # '112': [1, 2, 3],
     # '113': [11, 22, 33],
     # '114': [111, 222, 333],
-    '115': [1111, 2222, 3333],
+    '115': [
+        1111,
+        2222,
+        3333
+    ],
 }
 
 feedback_intervals = {
