@@ -1,0 +1,40 @@
+{
+  "env": {
+    "warn_only": true,
+    "hosts": [
+    ],
+    "roledefs": {
+      "pu-pve1": [
+        "root@128.112.168.26"
+      ],
+      "pu-pve2": [
+        "root@128.112.168.27"
+      ],
+      "pu-pve3": [
+        "root@128.112.168.28"
+      ],
+      "analyst": [
+        "root@128.112.168.28"
+      ]
+    },
+    "user": "root",
+    "password": "PrincetonP4OVS",
+    "vm": {
+      "prefix": "10.10.10.",
+      "user": "mshahbaz",
+      "password": "nopass",
+      "proxmox": {
+        "bridge": "vmbr1"
+      }
+    },
+    "analyst": {
+      "path": "/root/mshahbaz/notebooks/baseerat/runs"
+    }
+  },
+  "ovs": {
+    "paths": {
+      "base": "/root/Baseerat/ovs",
+      "var": "/usr/local/var/run/openvswitch"
+    }
+  }
+}
