@@ -2,8 +2,12 @@
   "env": {
     "warn_only": true,
     "hosts": [
-      "root@128.112.168.27"
     ],
+    "roledefs": {
+      "pve1": ["root@128.112.168.26"],
+      "pve2": ["root@128.112.168.27"],
+      "pve3": ["root@128.112.168.28"]
+    },
     "user": "root",
     "password": "PrincetonP4OVS",
     "vm": {

@@ -9,20 +9,22 @@ with open(os.path.dirname(__file__) + "/pve.json") as json_file:
 
 env.warn_only = settings['env']['warn_only']
 env.hosts = settings['env']['hosts']
+env.roledefs = settings['env']['roledefs']
 env.user = settings['env']['user']
 env.password = settings['env']['password']
 env['vm'] = settings['env']['vm']
+
 
 """ Basic PVE Commands"""
 
 
 def vm_run(vm_id, command, log_file=None):
     if log_file:
-        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\" > %s"
+        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s \"%s\" > %s"
                    % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                       vm_id, command, log_file))
     else:
-        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\""
+        return run("sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s \"%s\""
                    % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                       vm_id, command))
 
@@ -64,12 +66,14 @@ def vm_parallel_run(commands, display_only=False):
             if isinstance(commands[vm_id], list):
                 for command in commands[vm_id]:
                     script += " \\\n"
-                    script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\"'" \
+                    script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+                              "%s@%s%s \"%s\"'" \
                               % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                                  vm_id, command.replace("'", "'\\''"))
             else:
                 script += " \\\n"
-                script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s \"%s\"'" \
+                script += "'sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+                          "%s@%s%s \"%s\"'" \
                           % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                              vm_id, commands[vm_id].replace("'", "'\\''"))
 
@@ -83,11 +87,11 @@ def vm_parallel_run(commands, display_only=False):
 
 def vm_get(vm_id, src, dst, log_file=None):
     if log_file:
-        run("sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s > %s"
+        run("sshpass -p %s scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s:%s %s > %s"
             % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                vm_id, src, dst, log_file))
     else:
-        run("sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s"
+        run("sshpass -p %s scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s:%s %s"
             % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                vm_id, src, dst))
 
@@ -97,7 +101,7 @@ def parallel_get(commands, display_only=False):
         script = "parallel :::"
         for command in commands:
             script += " \\\n"
-            script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s:%s %s'" \
+            script += "'sshpass -p %s scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s:%s %s'" \
                       % (env.password, env.host_string, command['src'], command['dst'])
 
         if display_only:
@@ -115,12 +119,14 @@ def vm_parallel_get(commands, display_only=False):
             if isinstance(commands[vm_id], list):
                 for command in commands[vm_id]:
                     script += " \\\n"
-                    script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s'" \
+                    script += "'sshpass -p %s scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+                              "%s@%s%s:%s %s'" \
                               % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                                  vm_id, command['src'], command['dst'])
             else:
                 script += " \\\n"
-                script += "'sshpass -p %s scp -o StrictHostKeyChecking=no %s@%s%s:%s %s'" \
+                script += "'sshpass -p %s scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+                          "%s@%s%s:%s %s'" \
                           % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'],
                              vm_id, commands[vm_id]['src'], commands[vm_id]['dst'])
 
@@ -165,10 +171,10 @@ def vm_delete(vm_id):
 
 
 def vm_is_ready(vm_id):
-    run("sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s 'date'; "
+    run("sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s 'date'; "
         "while test $? -gt 0; do "
         "  sleep 5; echo 'Trying again ...'; "
-        "  sshpass -p %s ssh -o StrictHostKeyChecking=no %s@%s%s 'date'; "
+        "  sshpass -p %s ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null %s@%s%s 'date'; "
         "done"
         % (env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id),
            env['vm']['password'], env['vm']['user'], env['vm']['prefix'], str(vm_id)))
@@ -248,7 +254,6 @@ def vm_options_multi(option, value, *vm_ids):
     for vm_id in vm_ids:
         vm_options(vm_id, option, value)
 
-
 # def vm_add_host(vm_id, host_vm_id, host_vm_name):
 #     vm_run(vm_id, "echo '%s%s %s' | sudo tee -a /etc/hosts"
 #            % (env['vm']['prefix'], host_vm_id, host_vm_name))
@@ -262,3 +267,7 @@ def vm_options_multi(option, value, *vm_ids):
 # def vm_del_route(vm_id, prefix, iface):
 #     vm_run(vm_id,
 #             "sudo ip route del %s dev %s" % (prefix, iface))
+
+
+def vm_hostname():
+    run("hostname")
