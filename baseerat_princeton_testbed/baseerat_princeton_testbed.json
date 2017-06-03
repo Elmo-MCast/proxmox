@@ -36,5 +36,18 @@
       "base": "/root/Baseerat/ovs",
       "var": "/usr/local/var/run/openvswitch"
     }
+  },
+  "pu-pve2": {
+    "bridge": {
+      "name": "br0",
+      "ports": [
+        "dpdk0",
+        "dpdk1"
+      ],
+      "flow_rules": [
+        "in_port=1, actions=2",
+        "in_port=2, actions=1"
+      ]
+    }
   }
 }
