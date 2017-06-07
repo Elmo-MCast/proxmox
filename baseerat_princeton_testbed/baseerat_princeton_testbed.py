@@ -26,6 +26,7 @@ fab.env['pu-pve2'] = settings['pu-pve2']
 
 """ Helper Functions """
 
+
 def is_execute(execute):
     if isinstance(execute, str):
         if execute == "True":
@@ -34,6 +35,7 @@ def is_execute(execute):
             return False
     else:
         return execute
+
 
 """ 'baseerat_princeton_testbed' Commands """
 
@@ -190,59 +192,83 @@ def pve_configure_vswitch(cpu_mask, bridge_name, ports, execute=True):
         return script
 
 
+def pve_connect_vswitch_to_bridge_1(bridge_name, bridge_1, execute=True):
+    script = pve_disconnect_vswitch_from_bridge_1(bridge_name, bridge_1, False)
+    script += "ip link add %s%si0 type veth peer name %s%si1; " \
+              "ip link set dev %s%si0 up; ip link set dev %s%si1 up; " \
+              "brctl addif %s %s%si0; " \
+              % (bridge_name, bridge_1, bridge_name, bridge_1,
+                 bridge_name, bridge_1, bridge_name, bridge_1,
+                 bridge_1, bridge_name, bridge_1)
+    script += ovs_add_port(bridge_name, "%s%si1" % (bridge_name, bridge_1), False)
+    if is_execute(execute):
+        fab.run(script)
+    else:
+        return script
+
+
+def pve_disconnect_vswitch_from_bridge_1(bridge_name, bridge_1, execute=True):
+    script = ovs_delete_port(bridge_name, "%s%si1" % (bridge_name, bridge_1), False)
+    script += "brctl delif %s %s%si0; " \
+              "ip link del %s%si0; " \
+              % (bridge_1, bridge_name, bridge_1,
+                 bridge_name, bridge_1)
+    if is_execute(execute):
+        fab.run(script)
+    else:
+        return script
+
+
 ''' pu-pve2 Commands '''
 
 
 @fab.roles('pu-pve2')
-def pve2_configure_vswitch(execute=True):
+def pve2_configure_vswitch():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
     ports = fab.env['pu-pve2']['bridge']['ports']
-    proxmox_bridge = fab.env['vm']['proxmox']['bridge']
+    bridge_1 = fab.env['pu-pve2']['settings']['vm']['bridge_1']
     script = pve_configure_vswitch(0x1, bridge_name, ports, False)
-    script += "ip link add %s%si0 type veth peer name %s%si1; " \
-              "ip link set dev %s%si0 up; ip link set dev %s%si1 up; " \
-              "brctl addif %s %s%si0; " \
-              % (bridge_name, proxmox_bridge, bridge_name, proxmox_bridge,
-                 bridge_name, proxmox_bridge, bridge_name, proxmox_bridge,
-                 proxmox_bridge, bridge_name, proxmox_bridge)
-    script += ovs_add_port(bridge_name, "%s%si1" % (bridge_name, proxmox_bridge), False)
-    if is_execute(execute):
-        fab.run(script)
-    else:
-        return script
+    script += pve_connect_vswitch_to_bridge_1(bridge_name, bridge_1, False)
+    script += ovs_show_bridge('ofctl', bridge_name, False)
+    fab.run(script)
 
 
 @fab.roles('pu-pve2')
-def pve2_clear_vswitch(execute=True):
+def pve2_clear_vswitch():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
     ports = fab.env['pu-pve2']['bridge']['ports']
-    proxmox_bridge = fab.env['vm']['proxmox']['bridge']
-    script = ovs_delete_port(bridge_name, "%s%si1" % (bridge_name, proxmox_bridge), False)
-    script += "brctl delif %s %s%si0; " \
-              "ip link del %s%si0; " \
-              % (proxmox_bridge, bridge_name, proxmox_bridge,
-                 bridge_name, proxmox_bridge)
+    bridge_1 = fab.env['pu-pve2']['settings']['vm']['bridge_1']
+    script = pve_disconnect_vswitch_from_bridge_1(bridge_name, bridge_1, False)
     script += pve_clear_vswitch(bridge_name, ports, False)
-    if is_execute(execute):
-        fab.run(script)
-    else:
-        return script
+    fab.run(script)
 
 
 @fab.roles('pu-pve2')
-def pve2_configure_flow_rules(execute=True):
+def pve2_configure_flow_rules():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
     flow_rules = fab.env['pu-pve2']['bridge']['flow_rules']
     script = ""
     for flow_rule in flow_rules:
         script += ovs_add_flow(bridge_name, flow_rule, False)
-    if is_execute(execute):
-        fab.run(script)
-    else:
-        return script
+    fab.run(script)
 
 
 @fab.roles('pu-pve2')
-def pve2_clear_flow_rules(execute=True):
+def pve2_clear_flow_rules():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
-    return ovs_delete_flows(bridge_name, execute)
+    return ovs_delete_flows(bridge_name, True)
+
+
+def _pve2_get_client_vm_id_list():
+    vm_id_set = set()
+    for vm_config in fab.env['pu-pve2']['clients']["vms"]:
+        vm_id = vm_config['vm_id']
+        vm_id_set |= {vm_id}
+    return list(vm_id_set)
+
+
+@fab.roles('pu-pve2')
+def pve2_configure_clients():
+    pve.vm_generate_multi(fab.env['pu-pve2']['settings']['vm']['base_id'], "client", False, None,
+                          *_pve2_get_client_vm_id_list())
+    # TODO: complete this ...

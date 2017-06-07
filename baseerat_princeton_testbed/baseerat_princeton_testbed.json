@@ -22,10 +22,7 @@
     "vm": {
       "prefix": "10.10.10.",
       "user": "mshahbaz",
-      "password": "nopass",
-      "proxmox": {
-        "bridge": "vmbr1"
-      }
+      "password": "nopass"
     },
     "analyst": {
       "path": "/root/mshahbaz/notebooks/baseerat/runs"
@@ -38,6 +35,13 @@
     }
   },
   "pu-pve2": {
+    "settings": {
+      "vm": {
+        "base_id": 103,
+        "prefix_1": "11.11.11.",
+        "bridge_1": "vmbr1"
+      }
+    },
     "bridge": {
       "name": "br0",
       "ports": [
@@ -46,7 +50,15 @@
       ],
       "flow_rules": [
         "in_port=1, actions=2",
-        "in_port=2, actions=1"
+        "in_port=2, actions=1",
+        "in_port=3, actions=local"
+      ]
+    },
+    "clients": {
+      "vms": [
+        {
+          "vm_id": 120
+        }
       ]
     }
   }
