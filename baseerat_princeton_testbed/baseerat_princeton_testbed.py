@@ -24,6 +24,7 @@ fab.env['analyst'] = settings['env']['analyst']
 fab.env['ovs'] = settings['ovs']
 fab.env['pu-pve2'] = settings['pu-pve2']
 fab.env['pu-pve1'] = settings['pu-pve1']
+fab.env['pu-pve3'] = settings['pu-pve3']
 
 """ Helper Functions """
 
@@ -374,3 +375,61 @@ def pve1_setup_lb():
 @fab.roles('pu-pve1')
 def pve1_cleanup_lb():
     pve.vm_destroy_multi(*_get_vm_id_list([fab.env['pu-pve1']['lb']['vm']]))
+
+
+''' pu-pve3 (End-host and Backends) Commands '''
+
+
+@fab.roles('pu-pve3')
+def pve3_setup_vswitch():
+    bridge_name = fab.env['pu-pve3']['bridge']['name']
+    ports = fab.env['pu-pve3']['bridge']['ports']
+    bridge_1 = fab.env['pu-pve3']['settings']['vm']['bridge_1']
+    script = pve_setup_vswitch(0x1, bridge_name, ports, False)
+    script += pve_connect_vswitch_to_bridge_1(bridge_name, bridge_1, False)
+    script += ovs_show_bridge('ofctl', bridge_name, False)
+    fab.run(script)
+
+
+@fab.roles('pu-pve3')
+def pve3_cleanup_vswitch():
+    bridge_name = fab.env['pu-pve3']['bridge']['name']
+    ports = fab.env['pu-pve3']['bridge']['ports']
+    bridge_1 = fab.env['pu-pve3']['settings']['vm']['bridge_1']
+    script = pve_disconnect_vswitch_from_bridge_1(bridge_name, bridge_1, False)
+    script += pve_cleanup_vswitch(bridge_name, ports, False)
+    fab.run(script)
+
+
+@fab.roles('pu-pve3')
+def pve3_configure_flow_rules():
+    bridge_name = fab.env['pu-pve3']['bridge']['name']
+    flow_rules = fab.env['pu-pve3']['bridge']['flow_rules']
+    script = ""
+    for flow_rule in flow_rules:
+        script += ovs_add_flow(bridge_name, flow_rule, False)
+    fab.run(script)
+    # TODO: come up with right rules for the LB VM.
+
+
+@fab.roles('pu-pve3')
+def pve3_clear_flow_rules():
+    bridge_name = fab.env['pu-pve3']['bridge']['name']
+    return ovs_delete_flows(bridge_name, True)
+
+
+@fab.roles('pu-pve3')
+def pve3_setup_backends():
+    pve.vm_generate_multi(fab.env['pu-pve3']['settings']['vm']['base_id'], 'backend', False, None,
+                          *_get_vm_id_list(fab.env['pu-pve3']['backends']['vms']))
+    _setup_options(fab.env['pu-pve3']['backends']['vms'],
+                   fab.env['pu-pve3']['backends']['options'])
+    scripts = _setup_ifaces(None, fab.env['pu-pve3']['backends']['vms'],
+                            fab.env['pu-pve3']['settings']['vm'], False)
+    # TODO: add scripts once we know what'd be running on these VMs.
+    pve.vm_parallel_run(scripts)
+
+
+@fab.roles('pu-pve3')
+def pve3_cleanup_backends():
+    pve.vm_destroy_multi(*_get_vm_id_list(fab.env['pu-pve3']['backends']['vms']))
