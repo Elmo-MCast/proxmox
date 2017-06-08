@@ -49,15 +49,26 @@
         "dpdk1"
       ],
       "flow_rules": [
-        "in_port=1, actions=2",
-        "in_port=2, actions=1",
+        "in_port=1, actions=local",
+        "in_port=2, actions=local",
         "in_port=3, actions=local"
       ]
     },
     "clients": {
+      "options": {
+          "sockets": 1,
+          "cores": 1,
+          "memory": 2048
+        },
       "vms": [
         {
           "vm_id": 120
+        },
+        {
+          "vm_id": 121
+        },
+        {
+          "vm_id": 122
         }
       ]
     }

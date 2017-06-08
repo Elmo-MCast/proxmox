@@ -37,6 +37,45 @@ def is_execute(execute):
         return execute
 
 
+def _get_client_vm_id_list(vms):
+    vm_id_set = set()
+    for vm in vms:
+        vm_id = vm['vm_id']
+        vm_id_set |= {vm_id}
+    return list(vm_id_set)
+
+
+def _setup_options(vms, options):
+    for vm in vms:
+        vm_id = vm['vm_id']
+        sockets = options['sockets']
+        cores = options['cores']
+        memory = options['memory']
+        pve.vm_options(vm_id, 'sockets', sockets)
+        pve.vm_options(vm_id, 'cores', cores)
+        pve.vm_options(vm_id, 'memory', memory)
+        pve.vm_stop(vm_id)
+        pve.vm_start(vm_id)
+
+    for vm in vms:
+        pve.vm_is_ready(vm['vm_id'])
+
+
+def _setup_ifaces(scripts, vms, settings, execute=True):
+    if not isinstance(scripts, dict):
+        scripts = dict()
+    prefix_1 = settings['prefix_1']
+    for vm in vms:
+        vm_id = vm['vm_id']
+        scripts[vm_id] = "sudo ip addr add %s%s/24 dev eth1; " \
+                         "sudo ip link set eth1 up; " \
+                         % (prefix_1, vm_id)
+    if is_execute(execute):
+        pve.vm_parallel_run(scripts)
+    else:
+        return scripts
+
+
 """ 'baseerat_princeton_testbed' Commands """
 
 ''' Common OVS Commands '''
@@ -219,11 +258,11 @@ def pve_disconnect_vswitch_from_bridge_1(bridge_name, bridge_1, execute=True):
         return script
 
 
-''' pu-pve2 Commands '''
+''' pu-pve2 (ToR and Clients) Commands '''
 
 
 @fab.roles('pu-pve2')
-def pve2_configure_vswitch():
+def pve2_setup_vswitch():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
     ports = fab.env['pu-pve2']['bridge']['ports']
     bridge_1 = fab.env['pu-pve2']['settings']['vm']['bridge_1']
@@ -234,7 +273,7 @@ def pve2_configure_vswitch():
 
 
 @fab.roles('pu-pve2')
-def pve2_clear_vswitch():
+def pve2_cleanup_vswitch():
     bridge_name = fab.env['pu-pve2']['bridge']['name']
     ports = fab.env['pu-pve2']['bridge']['ports']
     bridge_1 = fab.env['pu-pve2']['settings']['vm']['bridge_1']
@@ -251,6 +290,7 @@ def pve2_configure_flow_rules():
     for flow_rule in flow_rules:
         script += ovs_add_flow(bridge_name, flow_rule, False)
     fab.run(script)
+    # TODO: come up with right rules for the client VMs.
 
 
 @fab.roles('pu-pve2')
@@ -259,16 +299,19 @@ def pve2_clear_flow_rules():
     return ovs_delete_flows(bridge_name, True)
 
 
-def _pve2_get_client_vm_id_list():
-    vm_id_set = set()
-    for vm_config in fab.env['pu-pve2']['clients']["vms"]:
-        vm_id = vm_config['vm_id']
-        vm_id_set |= {vm_id}
-    return list(vm_id_set)
+@fab.roles('pu-pve2')
+def pve2_setup_clients():
+    pve.vm_generate_multi(fab.env['pu-pve2']['settings']['vm']['base_id'], 'client', False, None,
+                          *_get_client_vm_id_list(fab.env['pu-pve2']['clients']['vms']))
+    _setup_options(fab.env['pu-pve2']['clients']['vms'],
+                   fab.env['pu-pve2']['clients']['options'])
+    scripts = _setup_ifaces(None, fab.env['pu-pve2']['clients']['vms'],
+                            fab.env['pu-pve2']['settings']['vm'], False)
+    # TODO: add scripts once we know what'd be running on these VMs.
+    pve.vm_parallel_run(scripts)
 
 
 @fab.roles('pu-pve2')
-def pve2_configure_clients():
-    pve.vm_generate_multi(fab.env['pu-pve2']['settings']['vm']['base_id'], "client", False, None,
-                          *_pve2_get_client_vm_id_list())
-    # TODO: complete this ...
+def pve2_cleanup_clients():
+    pve.vm_destroy_multi(*_get_client_vm_id_list(fab.env['pu-pve2']['clients']['vms']))
+
